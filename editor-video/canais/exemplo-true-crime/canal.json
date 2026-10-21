@@ -1,0 +1,15 @@
+{
+  "nome": "Exemplo True Crime BR",
+  "identidade": {
+    "formato": "16:9",
+    "fps": 30,
+    "paleta": ["#E2A900", "#E5484D", "#3DA5D9"],
+    "fundos": ["#0d0f14", "#120d0d", "#0b1016"],
+    "marca": { "logo": "../../exemplos/demo/logo.png", "posicao": "sup-dir", "opacidade": 0.7, "altura": 0.06 },
+    "trilha": { "volume": 0.12, "abaixar_na_fala": true }
+  },
+  "predefinicoes": ["documentario-classico.json", "arquivo-sombrio.json", "editorial-rapido.json"],
+  "trilhas": ["../../exemplos/demo/trilhas"],
+  "variacao_pct": 10,
+  "unicidade": { "janela": 10, "similaridade_max": 0.5, "tentativas": 40 }
+}

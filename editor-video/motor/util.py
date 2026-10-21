@@ -39,7 +39,7 @@ def duracao(caminho):
         return 0.0
     r = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "json", caminho],
-        capture_output=True, text=True,
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     try:
         return float(json.loads(r.stdout)["format"]["duration"])
@@ -57,7 +57,7 @@ def tipo_midia_segura(caminho):
 def tem_audio(caminho):
     r = subprocess.run(
         ["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0", caminho],
-        capture_output=True, text=True,
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     return bool(r.stdout.strip())
 
@@ -69,7 +69,7 @@ def achar_fonte(peso="bold"):
     }[peso]
     if shutil.which("fc-match"):
         for n in nomes:
-            r = subprocess.run(["fc-match", "-f", "%{file}", n], capture_output=True, text=True)
+            r = subprocess.run(["fc-match", "-f", "%{file}", n], capture_output=True, text=True, encoding="utf-8", errors="replace")
             if r.stdout and os.path.exists(r.stdout):
                 return r.stdout
     for p in ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "C:/Windows/Fonts/arialbd.ttf",
@@ -114,8 +114,38 @@ def assinatura_arquivo(caminho):
     return f"{caminho}|{st.st_size}|{int(st.st_mtime)}"
 
 
+def cam(caminho):
+    """Caminho seguro dentro de uma opção de filtro (fontfile='...', textfile='...').
+
+    No Windows 'C:\\pasta' quebra o filtro: troca \\ por / e escapa o ':'.
+    """
+    return str(caminho).replace("\\", "/").replace(":", "\\:")
+
+
+_VERSAO_FFMPEG = None
+
+
+def versao_ffmpeg():
+    global _VERSAO_FFMPEG
+    if _VERSAO_FFMPEG is None:
+        r = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        try:
+            _VERSAO_FFMPEG = int(r.stdout.split()[2].lstrip("n").split(".")[0])
+        except (IndexError, ValueError):
+            _VERSAO_FFMPEG = 6
+    return _VERSAO_FFMPEG
+
+
+def args_grafo(grafo, pasta):
+    """Passa o filter_complex por arquivo (evita o limite de 32 mil caracteres da linha de comando do Windows)."""
+    p = os.path.join(pasta, f"grafo_{abs(hash(grafo))}.txt")
+    with open(p, "w", encoding="utf-8") as f:
+        f.write(grafo)
+    return ["-/filter_complex", p] if versao_ffmpeg() >= 7 else ["-filter_complex_script", p]
+
+
 def rodar(args, descricao=""):
-    r = subprocess.run(args, capture_output=True, text=True)
+    r = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if r.returncode != 0:
         log = os.environ.get("FABRICA_DEBUG") and " ".join(args) or ""
         raise ErroEditor(f"ffmpeg falhou {descricao}:\n{r.stderr[-3000:]}\n{log}")

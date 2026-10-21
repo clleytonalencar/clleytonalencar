@@ -1,0 +1,13 @@
+{
+  "nome": "Arquivo sombrio",
+  "variacao_pct": 10,
+  "eixos": {
+    "templates":  { "pct": 60, "modo": "escolher", "lista": ["moldura", "janela", "dossie", "pilha", "evidencias", "frente_fundo", "foco", "retrato", "perfil", "citacao", "abertura", "placa", "linha_do_tempo", "confronto", "antes_depois"] },
+    "avatar":     { "pct": 0 },
+    "destaques":  { "pct": 40 },
+    "transicoes": { "pct": 40, "modo": "escolher", "lista": ["preto", "desfoque", "persiana", "fade"] },
+    "movimento":  { "pct": 85, "modo": "escolher", "lista": ["zoom_in", "zoom_out", "pan_cima", "pan_esquerda"] },
+    "filtros":    { "pct": 60, "modo": "escolher", "lista": ["arquivo", "pb", "cinema"] },
+    "legenda":    { "ativo": true, "estilo": "rodape", "palavras": 6 }
+  }
+}

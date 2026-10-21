@@ -1,0 +1,13 @@
+{
+  "nome": "Editorial rápido",
+  "variacao_pct": 10,
+  "eixos": {
+    "templates":  { "pct": 85, "modo": "escolher", "lista": ["painel_direita", "painel_esquerda", "lado_a_lado", "grade", "nome", "citacao", "placa", "evidencias", "linha_do_tempo", "abertura", "moldura"] },
+    "avatar":     { "pct": 0 },
+    "destaques":  { "pct": 80 },
+    "transicoes": { "pct": 70, "modo": "escolher", "lista": ["empurrar", "whoosh", "flash", "cortina", "zoom"] },
+    "movimento":  { "pct": 50, "modo": "escolher", "lista": ["zoom_in", "pan_direita"] },
+    "filtros":    { "pct": 20, "modo": "escolher", "lista": ["frio", "granulado"] },
+    "legenda":    { "ativo": true, "estilo": "destaque", "palavras": 4 }
+  }
+}

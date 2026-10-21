@@ -6,7 +6,7 @@ etiquetas e formas, e posicionam tudo com animação de entrada.
 import math
 import os
 
-from .util import cor_ff, par, quebrar, tipo_midia
+from .util import cam, cor_ff, par, quebrar, tipo_midia
 
 # Movimentos de câmera (Ken Burns). F = total de quadros da cena.
 MOVIMENTOS = {
@@ -109,7 +109,7 @@ class Cena:
             if janela:
                 tf = self._arquivo_texto(janela)
                 cad.append(
-                    f"drawtext=fontfile='{self.fonte_regular}':textfile='{tf}':expansion=none:fontsize={int(20 * self.u)}:"
+                    f"drawtext=fontfile='{cam(self.fonte_regular)}':textfile='{cam(tf)}':expansion=none:fontsize={int(20 * self.u)}:"
                     f"fontcolor=white@0.75:x=(w-text_w)/2:y={barra // 2}-text_h/2"
                 )
         b = par(borda * self.u)
@@ -201,7 +201,7 @@ class Cena:
         if ate is not None:
             alpha = f"min({alpha},clip(({ate:.3f}-t)/0.25,0,1))"
         opts = [
-            f"fontfile='{fonte}'", f"textfile='{tf}'", "expansion=none", f"fontsize={tam}",
+            f"fontfile='{cam(fonte)}'", f"textfile='{cam(tf)}'", "expansion=none", f"fontsize={tam}",
             f"fontcolor={cor_ff(cor)}", f"x={x}", f"y={y}", f"alpha='{alpha}'", f"line_spacing={int(tam * espaco)}",
         ]
         if caixa:

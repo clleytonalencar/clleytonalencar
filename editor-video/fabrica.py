@@ -8,6 +8,10 @@ Comandos:
                                   distribui modelos/transições/movimentos/filtros conforme os eixos
   render PROJETO [-o video.mp4] [--preview] [--cena N]
                                   renderiza o projeto (ou só a cena N)
+  produzir ROTEIRO --canal PASTA [--id ID] [--preview] [--so-projeto]
+                                  modo fábrica: escolhe predefinição/trilha/cor do canal em rodízio,
+                                  garante unicidade contra os últimos vídeos e registra no histórico
+  canal PASTA                     mostra o histórico e a rotação de um canal
   demo                            gera mídias de teste, monta e renderiza um vídeo de exemplo
 """
 import argparse
@@ -24,8 +28,9 @@ sys.path.insert(0, AQUI)
 from motor.auto import gerar_projeto, resumo  # noqa: E402
 from motor.modelos import MODELOS  # noqa: E402
 from motor.render import FILTROS, TRANSICOES, Projeto  # noqa: E402
+from motor.rotacao import Canal  # noqa: E402
 from motor.cena import MOVIMENTOS  # noqa: E402
-from motor.util import ErroEditor, achar_fonte, checar_ffmpeg, rodar  # noqa: E402
+from motor.util import ErroEditor, achar_fonte, cam, checar_ffmpeg, rodar  # noqa: E402
 
 CORES_PLACEHOLDER = ["#e5484d", "#30a46c", "#8e4ec6", "#f76b15", "#ffc53d", "#0090ff"]
 TEXTOS_EXEMPLO = {
@@ -89,11 +94,11 @@ def cmd_catalogo(a):
                 with open(os.path.join(tmp, f"{nome}{i}.txt"), "w", encoding="utf-8") as f:
                     f.write(txt)
             vf = (f"scale=384:216,pad=384:262:0:0:color=0x0d0f14,"
-                  f"drawtext=fontfile='{fonte}':textfile='{tmp}/selo{i}.txt':fontsize=17:fontcolor=white:box=1:"
+                  f"drawtext=fontfile='{cam(fonte)}':textfile='{cam(tmp)}/selo{i}.txt':fontsize=17:fontcolor=white:box=1:"
                   f"boxcolor=black@0.7:boxborderw=7:x=12:y=216-text_h-14,"
-                  f"drawtext=fontfile='{fonte}':textfile='{tmp}/slots{i}.txt':fontsize=17:fontcolor=white:box=1:"
+                  f"drawtext=fontfile='{cam(fonte)}':textfile='{cam(tmp)}/slots{i}.txt':fontsize=17:fontcolor=white:box=1:"
                   f"boxcolor=0x0b3b66@0.9:boxborderw=7:x=12:y=12,"
-                  f"drawtext=fontfile='{fonte}':textfile='{tmp}/nome{i}.txt':fontsize=21:fontcolor=white@0.9:x=4:y=229")
+                  f"drawtext=fontfile='{cam(fonte)}':textfile='{cam(tmp)}/nome{i}.txt':fontsize=21:fontcolor=white@0.9:x=4:y=229")
             rodar(["ffmpeg", "-y", "-loglevel", "error", "-ss", "2.4", "-i", mp4, "-frames:v", "1", "-vf", vf, png])
             print(f"  {chaves[i]}")
 
@@ -139,6 +144,43 @@ def cmd_render(a):
     print(f"Vídeo salvo em {saida}")
 
 
+def cmd_produzir(a):
+    canal = Canal(a.canal)
+    roteiro = ler_json(a.roteiro)
+    proj, registro, ok = canal.planejar(roteiro, video_id=a.id)
+    base = os.path.splitext(a.roteiro)[0]
+    proj_p = base + ".projeto.json"
+    salvar_json(proj_p, proj)
+    print(f"Canal: {canal.nome}")
+    print(f"Predefinição: {os.path.basename(registro['predefinicao'])} · cor {registro['cor']} · "
+          f"trilha {os.path.basename(registro['trilha'] or '-')} · semente {registro['semente']}")
+    print(f"Similaridade com os vídeos recentes: {registro['similaridade']:.2f} "
+          f"({'ok' if ok else 'ACIMA do limite: adicione predefinições/trilhas ao canal'})\n")
+    print(resumo(proj))
+    if a.so_projeto:
+        print(f"\nProjeto salvo em {proj_p} (não renderizado, não registrado)")
+        return
+    a.projeto, a.cena = proj_p, None
+    a.saida = a.saida or base + (".preview" if a.preview else "") + ".mp4"
+    cmd_render(a)
+    if not a.preview:
+        registro["arquivo"] = os.path.abspath(a.saida)
+        canal.registrar(registro)
+        print(f"Registrado em {canal.historico_arq}")
+
+
+def cmd_canal(a):
+    canal = Canal(a.pasta)
+    print(f"Canal: {canal.nome}")
+    print("Predefinições em rodízio:", ", ".join(os.path.basename(p) for p in canal.predefinicoes()))
+    print(f"Trilhas: {len(canal.trilhas())}")
+    hist = canal.historico()
+    print(f"Vídeos no histórico: {len(hist)}")
+    for h in hist[-15:]:
+        print(f"  {h['data']}  {h['video_id'][:18]:<18} {os.path.basename(h['predefinicao']):<28} "
+              f"{h['cor']:<9} sim={h['similaridade']:.2f}")
+
+
 def cmd_demo(a):
     checar_ffmpeg()
     pasta = os.path.join(AQUI, "exemplos")
@@ -153,7 +195,7 @@ def cmd_demo(a):
             f.write(f"FOTO {k}")
         rodar(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i",
                f"gradients=s=1600x1000:c0={c0}:c1={c1}:x0=0:y0=0:x1=1600:y1=1000:seed={k}",
-               "-vf", f"drawtext=fontfile='{fonte}':textfile='{midia}/rot{k}.txt':fontsize=150:fontcolor=white@0.85:"
+               "-vf", f"drawtext=fontfile='{cam(fonte)}':textfile='{cam(midia)}/rot{k}.txt':fontsize=150:fontcolor=white@0.85:"
                       f"x=(w-text_w)/2:y=(h-text_h)/2", "-frames:v", "1", os.path.join(midia, f"foto{k}.jpg")])
     rodar(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=s=1280x720:d=6:r=30",
            "-pix_fmt", "yuv420p", os.path.join(midia, "video1.mp4")])
@@ -161,7 +203,7 @@ def cmd_demo(a):
            "-t", "8", "-pix_fmt", "yuv420p", os.path.join(midia, "avatar.mp4")])
     rodar(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i",
            "color=c=black@0:s=360x140,format=rgba", "-vf",
-           f"drawtext=fontfile='{fonte}':text='FÁBRICA':fontsize=64:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2",
+           f"drawtext=fontfile='{cam(fonte)}':text='FÁBRICA':fontsize=64:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2",
            "-frames:v", "1", os.path.join(midia, "logo.png")])
     for k, d in enumerate([3.5, 4.0, 4.5, 3.8, 4.2, 5.0, 3.6, 4.4, 4.0], 1):
         rodar(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i",
@@ -169,6 +211,11 @@ def cmd_demo(a):
     rodar(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i",
            "aevalsrc='0.2*sin(2*PI*110*t)*(0.6+0.4*sin(2*PI*0.25*t))+0.15*sin(2*PI*165*t)':s=48000:d=40",
            "-ac", "2", os.path.join(midia, "trilha.wav")])
+    os.makedirs(os.path.join(midia, "trilhas"), exist_ok=True)
+    for k, (f1, f2) in enumerate([(98, 147), (130, 196), (87, 131)], 1):
+        rodar(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i",
+               f"aevalsrc='0.2*sin(2*PI*{f1}*t)*(0.6+0.4*sin(2*PI*0.3*t))+0.15*sin(2*PI*{f2}*t)':s=48000:d=40",
+               "-ac", "2", os.path.join(midia, "trilhas", f"trilha{k}.wav")])
 
     roteiro_p = os.path.join(pasta, "roteiro-exemplo.json")
     pre_p = os.path.join(AQUI, "predefinicoes", "documentario-classico.json")
@@ -201,6 +248,17 @@ def main():
     s.add_argument("--preview", action="store_true", help="metade da resolução, encode rápido")
     s.add_argument("--cena", type=int, help="renderiza só a cena N (1 = primeira)")
     s.set_defaults(fn=cmd_render)
+    s = sub.add_parser("produzir", help="modo fábrica: rotação por canal + unicidade + histórico")
+    s.add_argument("roteiro")
+    s.add_argument("--canal", required=True, help="pasta do canal (com canal.json)")
+    s.add_argument("--id", help="identificador do vídeo (ex.: id da tarefa no Notion)")
+    s.add_argument("-o", "--saida")
+    s.add_argument("--preview", action="store_true", help="rascunho; não grava no histórico")
+    s.add_argument("--so-projeto", action="store_true", help="só gera o projeto.json")
+    s.set_defaults(fn=cmd_produzir)
+    s = sub.add_parser("canal", help="mostra rotação e histórico de um canal")
+    s.add_argument("pasta")
+    s.set_defaults(fn=cmd_canal)
     s = sub.add_parser("demo", help="gera mídias de teste e renderiza um exemplo")
     s.add_argument("--preview", action="store_true")
     s.set_defaults(fn=cmd_demo)

@@ -22,7 +22,13 @@ python3 fabrica.py auto meu-roteiro.json -p predefinicoes/documentario-classico.
 python3 fabrica.py render meu-roteiro.projeto.json --preview   # rascunho em meia resolução
 python3 fabrica.py render meu-roteiro.projeto.json             # final 1080p
 python3 fabrica.py render meu-roteiro.projeto.json --cena 4    # só a cena 4
+
+# modo fábrica (vários canais): rodízio de predefinição/cor/trilha + unicidade + histórico
+python3 fabrica.py produzir meu-roteiro.json --canal canais/exemplo-true-crime --id tarefa-123
+python3 fabrica.py canal canais/exemplo-true-crime
 ```
+
+Guia completo de instalação e integração na máquina da fábrica: [INSTRUCOES-XEON.md](INSTRUCOES-XEON.md).
 
 As cenas são renderizadas em paralelo e ficam em cache (`.render_cache/`). Ao mudar uma cena, só ela é
 refeita; o resto é reaproveitado.

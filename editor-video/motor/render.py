@@ -6,8 +6,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 from .cena import Cena
 from .modelos import MODELOS
-from .util import (FORMATOS, ErroEditor, achar_fonte, assinatura_arquivo, cor_ff, duracao, hash_dados, par,
-                   quebrar, rodar, tem_audio, tipo_midia)
+from .util import (FORMATOS, ErroEditor, achar_fonte, args_grafo, assinatura_arquivo, cor_ff, duracao, hash_dados,
+                   par, rodar, tem_audio, tipo_midia)
 
 # nome amigável -> (tipo do xfade, duração padrão, toca whoosh?)
 TRANSICOES = {
@@ -132,7 +132,7 @@ class Projeto:
             args = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"]
             for e in c.entradas:
                 args += e
-            args += ["-filter_complex", c.grafo(), "-map", vout, "-map", aout, "-t", f"{dur:.3f}", "-r", str(self.fps),
+            args += args_grafo(c.grafo(), tmp) + ["-map", vout, "-map", aout, "-t", f"{dur:.3f}", "-r", str(self.fps),
                      "-c:v", "libx264", "-preset", "ultrafast" if self.preview else "veryfast",
                      "-crf", "26" if self.preview else "18", "-pix_fmt", "yuv420p",
                      "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", saida]
@@ -260,7 +260,7 @@ class Projeto:
             os.replace(arq + ".tmp.mp4", arq)
             log(f"  cena {i + 1:>3} {self.cenas[i].get('modelo', 'tela_cheia'):<16} {duracoes[i]:5.1f}s  ok")
 
-        paralelo = paralelo or max(1, (os.cpu_count() or 2) // 2)
+        paralelo = paralelo or int(os.environ.get("FABRICA_JOBS", 0)) or max(1, (os.cpu_count() or 2) // 2)
         with ThreadPoolExecutor(paralelo) as ex:
             list(ex.map(job, tarefas))
 
@@ -300,11 +300,15 @@ class Projeto:
             else:
                 f.append(f"{a}[mus]amix=inputs=2:normalize=0:duration=first[afinal]")
             a = "[afinal]"
+        tmp = tempfile.mkdtemp(prefix="fabrica_juntar_")
         if f:
-            args += ["-filter_complex", ";".join(f)]
+            args += args_grafo(";\n".join(f), tmp)
         else:
             v, a = "0:v", "0:a"
         args += ["-map", v, "-map", a, "-c:v", "libx264", "-preset", "ultrafast" if self.preview else "medium",
                  "-crf", "26" if self.preview else "19", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
                  "-movflags", "+faststart", saida]
-        rodar(args, "ao juntar as cenas")
+        try:
+            rodar(args, "ao juntar as cenas")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)

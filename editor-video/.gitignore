@@ -4,3 +4,4 @@ exemplos/*.mp4
 exemplos/*.projeto.json
 __pycache__/
 *.pyc
+canais/exemplo-*/historico.jsonl
