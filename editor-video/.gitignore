@@ -1,0 +1,6 @@
+.render_cache/
+exemplos/demo/
+exemplos/*.mp4
+exemplos/*.projeto.json
+__pycache__/
+*.pyc

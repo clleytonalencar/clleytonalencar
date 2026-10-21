@@ -1,0 +1,23 @@
+{
+  "blocos": [
+    { "modelo": "abertura", "texto": "O CASO CHRISTA PIKE", "subtexto": "A execução que deu errado",
+      "narracao": "demo/narracao1.wav", "midias": ["demo/foto1.jpg"] },
+    { "narracao": "demo/narracao2.wav", "midias": ["demo/foto2.jpg"],
+      "texto_narracao": "Em janeiro de 1995, uma estudante desapareceu do campus da Universidade do Tennessee." },
+    { "narracao": "demo/narracao3.wav", "midias": ["demo/foto3.jpg", "demo/foto4.jpg"],
+      "texto": "Duas versões, uma noite", "rotulos": ["a acusada", "a vítima"], "destaque": "1995",
+      "texto_narracao": "As duas se conheciam do mesmo programa de treinamento profissional." },
+    { "narracao": "demo/narracao4.wav", "midias": ["demo/foto5.jpg", "demo/foto6.jpg", "demo/foto7.jpg"],
+      "texto": "O que a polícia encontrou", "texto_narracao": "A investigação reuniu três provas decisivas." },
+    { "narracao": "demo/narracao5.wav", "midias": ["demo/video1.mp4"],
+      "texto": "O julgamento", "subtexto": "Knoxville, 1996", "destaque": "pena de morte",
+      "texto_narracao": "O júri decidiu pela pena de morte, algo raríssimo para uma mulher no estado." },
+    { "modelo": "linha_do_tempo", "narracao": "demo/narracao6.wav",
+      "midias": ["demo/foto1.jpg", "demo/foto2.jpg", "demo/foto3.jpg", "demo/foto8.jpg"],
+      "texto": "Trinta anos no corredor da morte", "rotulos": ["1995", "1996", "2013", "2026"] },
+    { "narracao": "demo/narracao7.wav", "midias": ["demo/foto8.jpg"], "texto": "Christa Pike", "subtexto": "condenada em 1996" },
+    { "modelo": "citacao", "narracao": "demo/narracao8.wav",
+      "texto": "Nada sobre aquele dia foi normal.", "subtexto": "jornalista que testemunhou a execução" },
+    { "modelo": "placa", "narracao": "demo/narracao9.wav", "texto": "E SE FOSSE NO BRASIL?" }
+  ]
+}

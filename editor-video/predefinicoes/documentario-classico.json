@@ -1,0 +1,19 @@
+{
+  "nome": "Documentário clássico (minha)",
+  "formato": "16:9",
+  "fps": 30,
+  "cor": "#E2A900",
+  "fundo": "#0d0f14",
+  "semente": 7,
+  "eixos": {
+    "templates":   { "pct": 70, "modo": "todos", "excluir": [] },
+    "avatar":      { "pct": 0 },
+    "destaques":   { "pct": 60 },
+    "transicoes":  { "pct": 50, "modo": "escolher", "lista": ["shutter", "whoosh", "fade", "flash", "zoom"] },
+    "movimento":   { "pct": 75, "modo": "escolher", "lista": ["zoom_in", "zoom_out", "pan_esquerda", "pan_direita"] },
+    "filtros":     { "pct": 40, "modo": "escolher", "lista": ["cinema", "pb"] },
+    "legenda":     { "ativo": true, "estilo": "rodape", "palavras": 7 }
+  },
+  "marca": { "logo": "demo/logo.png", "posicao": "sup-dir", "opacidade": 0.7, "altura": 0.06 },
+  "trilha": { "arquivo": "demo/trilha.wav", "volume": 0.12, "abaixar_na_fala": true }
+}
