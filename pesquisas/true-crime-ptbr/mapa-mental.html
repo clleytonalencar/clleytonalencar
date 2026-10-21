@@ -1,0 +1,258 @@
+<title>Dossiê True Crime PT-BR</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=Special+Elite&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: arquivo de caso — faixa de fita de evidência no topo, mapa mental no centro, fichas por ramo abaixo */
+:root {
+  --paper: #eef0f2;
+  --card: #ffffff;
+  --ink: #1b1f24;
+  --muted: #5a626c;
+  --line: #d3d8de;
+  --tape: #e2a900;
+  --tape-ink: #1b1f24;
+  --mark: #b3261e;
+  --ok: #1f7a4d;
+  --display: "Special Elite", "Courier New", monospace;
+  --body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #14171b; --card: #1d2126; --ink: #e8eaed; --muted: #9aa3ad; --line: #2e343b;
+    --tape: #f0b81c; --tape-ink: #14171b; --mark: #ff6b5e; --ok: #4cc38a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #14171b; --card: #1d2126; --ink: #e8eaed; --muted: #9aa3ad; --line: #2e343b;
+  --tape: #f0b81c; --tape-ink: #14171b; --mark: #ff6b5e; --ok: #4cc38a; color-scheme: dark;
+}
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55; }
+.tape { background: repeating-linear-gradient(135deg, var(--tape) 0 28px, var(--tape-ink) 28px 34px); height: 14px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 40px; }
+header { display: grid; gap: 10px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 48px); line-height: 1.1; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0 0 14px; text-wrap: balance; }
+h3 { font-size: 16px; font-weight: 800; margin: 0; }
+p { margin: 0; max-width: 68ch; }
+.lead { color: var(--muted); font-size: 16px; }
+.verdict { border-left: 4px solid var(--mark); background: var(--card); padding: 16px 18px; display: grid; gap: 6px; }
+.verdict strong { color: var(--mark); font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.map { background: var(--card); border: 1px solid var(--line); padding: 16px; overflow-x: auto; }
+.map pre { margin: 0; min-width: 900px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.file { background: var(--card); border: 1px solid var(--line); padding: 18px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.file .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.stats { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: var(--mono); font-size: 12px; border: 1px solid var(--line); padding: 2px 8px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chip.bad { border-color: var(--mark); color: var(--mark); }
+.chip.good { border-color: var(--ok); color: var(--ok); }
+.formula { font-family: var(--mono); font-size: 13px; background: var(--paper); padding: 8px 10px; overflow-wrap: anywhere; }
+ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.tablewrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.level { font-family: var(--mono); font-size: 12px; }
+.level.hi { color: var(--ok); } .level.mid { color: var(--tape); } .level.lo { color: var(--muted); }
+.timeline { display: grid; gap: 0; background: var(--card); border: 1px solid var(--line); }
+.step { display: grid; grid-template-columns: 96px 1fr; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.step:last-child { border-bottom: 0; }
+.step .t { font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.step.new { background: color-mix(in srgb, var(--tape) 14%, var(--card)); }
+.step.new .t { color: var(--ink); font-weight: 500; }
+footer { color: var(--muted); font-size: 13px; }
+@media (max-width: 520px) { .step { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+
+<div class="tape" aria-hidden="true"></div>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Fábrica de Vídeos · pesquisa de demanda · 21/10/2026</div>
+    <h1>Dossiê True Crime PT-BR</h1>
+    <p class="lead">Três canais modelo (CHEEKHBOX, santdarko, True Crimes Saga), a concorrência em português, as lacunas e o ângulo novo para a fábrica.</p>
+  </header>
+
+  <section class="verdict">
+    <strong>Veredito</strong>
+    <p>Entrar com <b>true crime gringo contado por narrador brasileiro</b>, fechando cada vídeo com o bloco fixo <b>“E se fosse no Brasil?”</b>. Mix de pauta: 60% caso clássico internacional, 25% caso em andamento nos EUA, 15% iceberg temático com versão “[completo]”.</p>
+  </section>
+
+  <section>
+    <h2>Mapa mental</h2>
+    <div class="map">
+<pre class="mermaid">
+mindmap
+  root((True Crime PT-BR))
+    Canais modelo
+      CHEEKHBOX
+        Casos clássicos mundiais
+        168 mil views por vídeo
+        HORROR + NOME DO CASO
+      santdarko
+        Formato Iceberg
+        Volumes + completo
+        CTA cedo
+      True Crimes Saga
+        Caso quente dos EUA em série
+        Títulos de revelação
+        Não monetiza
+    Concorrência PT
+      Com rosto
+        Marcos Campos
+        Beto Ribeiro
+        Fatos Sinistros
+      Faceless iceberg
+        Viroscopo
+        Mistere
+        aghorafobia
+      Gringos dublados
+        COURT TV PT
+        Bodycam Verdicts
+    Lacunas
+      Caleb Flynn sem narrador BR
+      Paquistão e Índia vazio
+      Iceberg de tema recente
+    Ângulo novo
+      E se fosse no Brasil
+      Plantão do caso
+      Casos que o Brasil nunca ouviu
+    Dobra de nicho
+      Crime x Direito BR
+      Iceberg x caso do momento
+      Crime x Sul da Ásia
+      Crime x fé e igreja
+    Processo da Fábrica
+      Outliers como demanda
+      Filtro de lacuna
+      Roteiro template
+      DreamFace no gancho
+      Compilação completo
+    Riscos
+      Conteúdo reutilizado
+      Anúncio limitado
+      RPM BR menor
+</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>Os 3 canais modelo</h2>
+    <div class="grid3">
+      <article class="file">
+        <span class="tag">Paquistão · Hindi/Urdu · desde jun/2026</span>
+        <h3>CHEEKHBOX</h3>
+        <div class="stats"><span class="chip">8,35 mil inscritos</span><span class="chip good">~168 mil views/vídeo</span><span class="chip">15,6 min</span></div>
+        <p><b>Ângulo:</b> casos já famosos no mundo (Fritzl, Fred &amp; Rose West, Channon-Newsom) recontados para um público que nunca os viu no próprio idioma.</p>
+        <div class="formula">[HORROR EM UMA FRASE] | O CASO [NOME]</div>
+        <p><b>Roteiro:</b> gancho com o desfecho → biografia das vítimas → “a noite que mudou tudo” → investigação → sentenças → CTA de opinião.</p>
+      </article>
+      <article class="file">
+        <span class="tag">Brasil · PT-BR · desde jul/2026</span>
+        <h3>santdarko</h3>
+        <div class="stats"><span class="chip">2,27 mil inscritos</span><span class="chip good">~37 mil views/vídeo</span><span class="chip">33,5 min</span></div>
+        <p><b>Ângulo:</b> formato iceberg (da superfície às profundezas) em enigmas, desaparecimentos e crimes brasileiros. Volumes viram “[completo]”, que sempre performa melhor.</p>
+        <div class="formula">O Iceberg de [Tema] [Sombrio] [vol.X | completo]</div>
+        <p><b>Roteiro:</b> gancho de 20 s → convite “vem comigo” → like/inscrição antes do 1º item → itens de 1–3 min → comentário gamificado.</p>
+      </article>
+      <article class="file">
+        <span class="tag">Nigéria · inglês · ativo em out/2026</span>
+        <h3>True Crimes Saga</h3>
+        <div class="stats"><span class="chip">719 inscritos</span><span class="chip">~19,6 mil views/vídeo</span><span class="chip bad">não monetizado</span></div>
+        <p><b>Ângulo:</b> “novela do caso” — Christa Pike e Caleb Flynn, um vídeo por revelação (911, advogado, recurso, namorado).</p>
+        <div class="formula">O que [NOME] REALMENTE fez antes de [ação]</div>
+        <p><b>Cuidado:</b> o vídeo é quase todo filmagem de TV e tribunal costurada. Copiar o ângulo, não o método.</p>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <h2>Prova de demanda em PT-BR</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Ângulo</th><th>Prova em português</th><th>Saturação</th><th>Leitura</th></tr></thead>
+        <tbody>
+          <tr><td>Caso em andamento (EUA)</td><td class="num">Christa Pike: 952 mil · 727 mil · 571 mil</td><td><span class="level mid">média</span></td><td>Caleb Flynn em PT só tem canais gringos dublados</td></tr>
+          <tr><td>Caso clássico mundial</td><td class="num">Saima Khan: 380 mil · ECOS DEL MISTERIO: 111 mil/7 dias</td><td><span class="level hi">baixa p/ Ásia</span></td><td>Casos do Paquistão e da Índia quase sem narrador brasileiro</td></tr>
+          <tr><td>Iceberg</td><td class="num">Viroscopo 327 mil · Semydeus 376 mil · Velumbra 288 mil</td><td><span class="level lo">alta</span></td><td>Entrar só com tema específico ou recente</td></tr>
+          <tr><td>Interrogatório / júri</td><td class="num">O Tribunal do Júri: 350 mil</td><td><span class="level mid">média</span></td><td>Usar como bloco dentro do vídeo</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Dobra de nicho</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Dobra</th><th>Exemplo</th><th>Potencial</th><th>Esforço</th></tr></thead>
+        <tbody>
+          <tr><td><b>Crime × Direito BR</b></td><td>Caleb Flynn: quanto tempo ele pegaria no Brasil?</td><td><span class="level hi">alto</span></td><td>baixo</td></tr>
+          <tr><td>Iceberg × caso do momento</td><td>O Iceberg do Caso Christa Pike</td><td><span class="level hi">alto</span></td><td>médio</td></tr>
+          <tr><td>Crime × Sul da Ásia</td><td>Os irmãos que desenterravam mortos no Paquistão</td><td><span class="level hi">alto</span></td><td>médio</td></tr>
+          <tr><td>Crime × interrogatório</td><td>As 7 mentiras de Caleb Flynn no interrogatório</td><td><span class="level mid">médio</span></td><td>médio</td></tr>
+          <tr><td>Crime × fé e igreja</td><td>O Iceberg dos Pastores Criminosos</td><td><span class="level mid">médio-alto</span></td><td>baixo</td></tr>
+          <tr><td>Compilação longa</td><td>[completo] 2 h de casos que o Brasil nunca ouviu</td><td><span class="level mid">médio</span></td><td>quase zero</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Template de roteiro (22–32 min)</h2>
+    <div class="timeline">
+      <div class="step"><span class="t">0:00–0:30</span><span><b>Gancho frio:</b> o fato mais chocante e a pergunta que o vídeo responde.</span></div>
+      <div class="step"><span class="t">0:30–1:00</span><span><b>Promessa + CTA leve:</b> “no final te conto como seria no Brasil”.</span></div>
+      <div class="step"><span class="t">1–5 min</span><span><b>Quem eram as vítimas:</b> rotina, sonhos, empatia.</span></div>
+      <div class="step"><span class="t">5–6 min</span><span><b>A virada:</b> “e então veio a noite que…”.</span></div>
+      <div class="step"><span class="t">6–12 min</span><span><b>O crime:</b> linha do tempo hora a hora.</span></div>
+      <div class="step"><span class="t">12–18 min</span><span><b>Investigação:</b> pistas, erros, interrogatório comentado.</span></div>
+      <div class="step"><span class="t">18–21 min</span><span><b>Revelação:</b> o detalhe que vira título.</span></div>
+      <div class="step"><span class="t">21–25 min</span><span><b>Julgamento e sentença.</b></span></div>
+      <div class="step new"><span class="t">25–28 min</span><span><b>E se fosse no Brasil?</b> Código Penal, júri, pena real, caso brasileiro parecido.</span></div>
+      <div class="step"><span class="t">28–29 min</span><span><b>CTA de debate</b> + frase-assinatura.</span></div>
+    </div>
+  </section>
+
+  <section class="grid3">
+    <article class="file">
+      <span class="tag">Encaixe no Notion</span>
+      <h3>Processo da Fábrica</h3>
+      <ul>
+        <li>Outliers dos canais modelo → <code>TITULO ORIGINAL</code></li>
+        <li>Filtro: top em PT &lt; 100 mil views ou só dublado = verde</li>
+        <li>Roteiro no template acima → status <code>ROTEIRO/DREAMFACE</code></li>
+        <li><code>TEXTO DA THUMB</code>: 2–3 palavras (“NÃO MORREU”, “ELE MENTIU”)</li>
+        <li>Prompt de thumb no esqueleto do Pesca Latina, sem sangue nem corpo</li>
+        <li>DreamFace só no gancho e no bloco “E se fosse no Brasil?”</li>
+        <li>A cada 3 vídeos do tema → “[completo]”</li>
+      </ul>
+    </article>
+    <article class="file">
+      <span class="tag">Primeiras pautas</span>
+      <h3>Backlog</h3>
+      <ul>
+        <li>ELA SOBREVIVEU À PRÓPRIA EXECUÇÃO | O CASO CHRISTA PIKE</li>
+        <li>O que CALEB FLYNN realmente fez antes de ligar para o 911</li>
+        <li>OS IRMÃOS QUE DESENTERRAVAM MORTOS | PAQUISTÃO</li>
+        <li>AS GÊMEAS QUE FALAVAM UMA LÍNGUA SÓ DELAS</li>
+        <li>O Iceberg das Execuções que Deram Errado</li>
+        <li>O Iceberg dos Pastores Criminosos</li>
+      </ul>
+    </article>
+    <article class="file">
+      <span class="tag">Antes de produzir</span>
+      <h3>Riscos</h3>
+      <ul>
+        <li><b>Conteúdo reutilizado:</b> narração e imagens próprias.</li>
+        <li><b>Anúncio limitado:</b> nada de violência sexual explícita no título.</li>
+        <li><b>RPM:</b> planeje com US$ 1,5–3 para audiência brasileira.</li>
+        <li><b>Caso aberto:</b> “acusado”, “segundo a promotoria”.</li>
+      </ul>
+    </article>
+  </section>
+
+  <footer>Dados: NexLev (canais, outliers, métricas em lote, transcrições, busca BR/PT) em 21/10/2026. RPM e status de monetização são estimativas. Relatório completo em <code>pesquisas/true-crime-ptbr/pesquisa-demanda-true-crime.md</code>.</footer>
+</div>
