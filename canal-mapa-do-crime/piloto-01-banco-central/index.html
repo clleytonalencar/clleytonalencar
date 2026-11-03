@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Mapa do Crime — Piloto 01</title>
+<style>
+  html, body { margin: 0; background: #07090c; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+/* =====================================================================
+   MAPA DO CRIME — motor de motion graphics do piloto (Caso 01)
+   Tudo é desenhado em canvas 2D a partir de um tempo t (segundos),
+   então cada quadro é determinístico: renderFrame(t) -> imagem.
+   O timeline (cenas + legendas) vem de build/timeline.json via
+   window.TIMELINE (injetado pelo tools/render.js).
+   ===================================================================== */
+const W = 1920, H = 1080;
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+
+/* ---------- paleta (identidade visual do canal) ---------- */
+const C = {
+  bg: '#0a0e13', grid: '#111820', block: '#121a23', blockEdge: '#1c2733', lot: '#17212c',
+  street: '#0d1218', label: '#5f6f82', text: '#e8edf2', dim: '#8796a8',
+  red: '#e5383b', redDeep: '#8f1d20', amber: '#f2a93b', bank: '#d6e2ee',
+  soilTop: '#2a2119', soil: '#1a140f', soilDeep: '#120e0a', concrete: '#59606a',
+};
+const FONT = 'Inter, "Inter Display", system-ui, sans-serif';
+
+/* ---------- utilidades de animação ---------- */
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const seg = (p, a, b) => clamp((p - a) / (b - a));
+const eio = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;   // easeInOutCubic
+const eout = k => 1 - Math.pow(1 - k, 3);                                     // easeOutCubic
+const expo = k => k === 1 ? 1 : 1 - Math.pow(2, -10 * k);
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+
+/* ---------- timeline ---------- */
+const TL = window.TIMELINE || { total: 61.6, scenes: [] };
+const SC = {}; TL.scenes.forEach((s, i) => { SC[s.id] = { ...s, i }; });
+function sceneAt(t) {
+  let cur = TL.scenes[0];
+  for (const s of TL.scenes) if (t >= s.start) cur = s;
+  if (t < TL.scenes[0].start) cur = TL.scenes[0];
+  const end = cur === TL.scenes[TL.scenes.length - 1] ? TL.total : cur.end;
+  const start = cur === TL.scenes[0] ? 0 : cur.start;
+  return { s: cur, p: clamp((t - start) / (end - start)), local: t - start, dur: end - start };
+}
+const P = (id, t) => { const s = SC[id]; const st = s.i === 0 ? 0 : s.start; const en = s.i === TL.scenes.length - 1 ? TL.total : s.end; return clamp((t - st) / (en - st)); };
+
+/* ---------- mundo (metros) — representação ilustrativa ---------- */
+// Casa na Rua 25 de Março, túnel de 75 m (dos fundos da casa até a caixa-forte),
+// passando sob a Av. Dom Manuel. Banco na esquina com a R. Heráclito Graça.
+const WORLD = {
+  streetsV: [ { x0: -78, x1: -64, name: 'RUA 25 DE MARÇO' }, { x0: 30, x1: 46, name: 'AV. DOM MANUEL' }, { x0: 150, x1: 162, name: '' }, { x0: -196, x1: -184, name: '' } ],
+  streetsH: [ { y0: -72, y1: -58, name: 'R. HERÁCLITO GRAÇA' }, { y0: 60, y1: 72, name: '' }, { y0: -200, y1: -188, name: '' }, { y0: 188, y1: 200, name: '' } ],
+  house: { x0: -64, x1: -8, y0: -8, y1: 8 },       // lote da casa alugada
+  annex: { x0: -20, x1: -8, y0: -7, y1: 7 },        // edícula (início do túnel)
+  bank: { x0: 52, x1: 132, y0: -52, y1: 50 },       // prédio do BC
+  vault: { x0: 56, x1: 74, y0: -10, y1: 10 },       // caixa-forte
+  tunnelStart: -12, tunnelEnd: 63, sewerX: 48,
+};
+// lotes "de textura" gerados uma vez (determinístico)
+const LOTS = (() => {
+  const r = rng(7), lots = [];
+  const xs = [-400, -196, -184, -78, -64, 30, 46, 150, 162, 400];
+  const ys = [-400, -200, -188, -72, -58, 60, 72, 188, 200, 400];
+  const blocks = [];
+  for (let i = 0; i < xs.length - 1; i++) for (let j = 0; j < ys.length - 1; j++) {
+    const b = { x0: xs[i], x1: xs[i + 1], y0: ys[j], y1: ys[j + 1] };
+    const isStreetX = WORLD.streetsV.some(s => s.x0 === b.x0 && s.x1 === b.x1);
+    const isStreetY = WORLD.streetsH.some(s => s.y0 === b.y0 && s.y1 === b.y1);
+    if (!isStreetX && !isStreetY) blocks.push(b);
+  }
+  for (const b of blocks) {
+    let y = b.y0 + 2;
+    while (y < b.y1 - 6) {
+      const h = 10 + r() * 16; let x = b.x0 + 2;
+      while (x < b.x1 - 6) { const w = 10 + r() * 22; lots.push({ x0: x, y0: y, x1: Math.min(x + w, b.x1 - 2), y1: Math.min(y + h, b.y1 - 2) }); x += w + 2; }
+      y += h + 2;
+    }
+  }
+  return { blocks, lots };
+})();
+
+/* ---------- câmera do mapa ---------- */
+let cam = { x: 0, y: 0, s: 6 };
+const wx = x => W / 2 + (x - cam.x) * cam.s;
+const wy = y => H / 2 + (y - cam.y) * cam.s;
+
+function rectW(r, fill, stroke, lw = 1) {
+  const x = wx(r.x0), y = wy(r.y0), w = (r.x1 - r.x0) * cam.s, h = (r.y1 - r.y0) * cam.s;
+  if (fill) { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.strokeRect(x, y, w, h); }
+}
+function txt(s, x, y, { size = 22, weight = 600, color = C.text, align = 'left', base = 'alphabetic', track = 0, alpha = 1, font = FONT } = {}) {
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = base;
+  ctx.font = `${weight} ${size}px ${font}`; if (track) ctx.letterSpacing = track + 'px';
+  ctx.fillText(s, x, y); ctx.restore();
+}
+function glow(color, blur) { ctx.shadowColor = color; ctx.shadowBlur = blur; }
+function noGlow() { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; }
+
+/* ---------- ícones ---------- */
+function pin(x, y, color, scale = 1, alpha = 1) {
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y); ctx.scale(scale, scale);
+  glow(color, 24); ctx.fillStyle = color;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.bezierCurveTo(-18, -24, -22, -34, -22, -44); ctx.arc(0, -44, 22, Math.PI, 0); ctx.bezierCurveTo(22, -34, 18, -24, 0, 0); ctx.fill();
+  noGlow(); ctx.fillStyle = C.bg; ctx.beginPath(); ctx.arc(0, -44, 8, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+}
+function reticle(x, y, r, color, t, alpha = 1) {
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.strokeStyle = color; ctx.lineWidth = 3; glow(color, 18);
+  ctx.translate(x, y); ctx.rotate(t * .6);
+  for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(0, 0, r, i * Math.PI / 2 + .25, i * Math.PI / 2 + Math.PI / 2 - .25); ctx.stroke(); }
+  ctx.rotate(-t * 1.2); ctx.lineWidth = 2;
+  for (let i = 0; i < 4; i++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.moveTo(r * .55, 0); ctx.lineTo(r * 1.25, 0); ctx.stroke(); }
+  ctx.restore();
+}
+function tag(x, y, label, sub, color, alpha = 1, align = 'left') {
+  ctx.save(); ctx.globalAlpha *= alpha;
+  ctx.font = `800 30px ${FONT}`; ctx.letterSpacing = '3px';
+  const w1 = ctx.measureText(label).width; ctx.font = `600 21px ${FONT}`; ctx.letterSpacing = '1px';
+  const w2 = sub ? ctx.measureText(sub).width : 0; const w = Math.max(w1, w2) + 44; const h = sub ? 90 : 56;
+  const x0 = align === 'left' ? x : align === 'right' ? x - w : x - w / 2;
+  ctx.fillStyle = 'rgba(8,11,15,.86)'; ctx.fillRect(x0, y, w, h);
+  ctx.fillStyle = color; ctx.fillRect(x0, y, 6, h);
+  txt(label, x0 + 24, y + 40, { size: 30, weight: 800, color, track: 3 });
+  if (sub) txt(sub, x0 + 24, y + 72, { size: 21, weight: 600, color: C.dim, track: 1 });
+  ctx.restore();
+}
+function dimLine(x1, y1, x2, y2, label, k, color = C.amber) {
+  if (k <= 0) return;
+  const xe = lerp(x1, x2, k), ye = lerp(y1, y2, k);
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.setLineDash([10, 8]); glow(color, 10);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(xe, ye); ctx.stroke(); ctx.setLineDash([]);
+  const nx = -(y2 - y1), ny = x2 - x1, nl = Math.hypot(nx, ny) || 1;
+  for (const [px, py] of [[x1, y1], ...(k >= 1 ? [[x2, y2]] : [])]) {
+    ctx.beginPath(); ctx.moveTo(px + nx / nl * 14, py + ny / nl * 14); ctx.lineTo(px - nx / nl * 14, py - ny / nl * 14); ctx.stroke();
+  }
+  noGlow();
+  if (k > .6) txt(label, (x1 + x2) / 2, (y1 + y2) / 2 - 18, { size: 34, weight: 800, color, align: 'center', alpha: seg(k, .6, 1) });
+  ctx.restore();
+}
+
+/* ---------- MAPA (vista de cima) ---------- */
+function drawMap(t, o = {}) {
+  ctx.fillStyle = C.street; ctx.fillRect(0, 0, W, H);
+  // quadras + lotes
+  for (const b of LOTS.blocks) rectW(b, C.block, C.blockEdge, 1.5);
+  ctx.globalAlpha = .9; for (const l of LOTS.lots) rectW(l, C.lot, null); ctx.globalAlpha = 1;
+  // grade técnica
+  ctx.strokeStyle = 'rgba(120,150,180,.05)'; ctx.lineWidth = 1;
+  const step = 10 * cam.s; const ox = wx(0) % step, oy = wy(0) % step;
+  for (let x = ox; x < W; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = oy; y < H; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  // faixas centrais da avenida
+  ctx.strokeStyle = 'rgba(242,169,59,.22)'; ctx.setLineDash([18, 16]); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(wx(38), 0); ctx.lineTo(wx(38), H); ctx.stroke(); ctx.setLineDash([]);
+  // nomes de rua
+  const ls = clamp(cam.s / 6, .7, 1.4);
+  for (const s of WORLD.streetsV) if (s.name) {
+    ctx.save(); ctx.translate(wx((s.x0 + s.x1) / 2), wy(-120)); ctx.rotate(-Math.PI / 2);
+    txt(s.name, 0, 0, { size: 17 * ls, weight: 600, color: C.label, align: 'center', base: 'middle', track: 4 }); ctx.restore();
+    ctx.save(); ctx.translate(wx((s.x0 + s.x1) / 2), wy(130)); ctx.rotate(-Math.PI / 2);
+    txt(s.name, 0, 0, { size: 17 * ls, weight: 600, color: C.label, align: 'center', base: 'middle', track: 4 }); ctx.restore();
+  }
+  for (const s of WORLD.streetsH) if (s.name) txt(s.name, wx(95), wy((s.y0 + s.y1) / 2), { size: 17 * ls, weight: 600, color: C.label, align: 'center', base: 'middle', track: 4 });
+
+  // banco
+  const bk = o.bank || 0;
+  rectW(WORLD.bank, `rgba(214,226,238,${.05 + .07 * bk})`, `rgba(214,226,238,${.25 + .6 * bk})`, 2 + bk);
+  if (bk > 0) {
+    // colunas / símbolo de instituição
+    const cx = wx(100), cy = wy(0);
+    ctx.save(); ctx.globalAlpha = bk; ctx.strokeStyle = C.bank; ctx.lineWidth = 3;
+    const u = cam.s * 1.6;
+    ctx.beginPath(); ctx.moveTo(cx - 6 * u, cy - 3 * u); ctx.lineTo(cx, cy - 7 * u); ctx.lineTo(cx + 6 * u, cy - 3 * u); ctx.closePath(); ctx.stroke();
+    for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(cx + i * 2.4 * u, cy - 2 * u); ctx.lineTo(cx + i * 2.4 * u, cy + 4 * u); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(cx - 6.5 * u, cy + 5 * u); ctx.lineTo(cx + 6.5 * u, cy + 5 * u); ctx.stroke(); ctx.restore();
+  }
+  // caixa-forte
+  const vk = o.vault || 0;
+  if (vk > 0) {
+    ctx.save(); ctx.globalAlpha = vk; rectW(WORLD.vault, 'rgba(242,169,59,.12)', C.amber, 2.5);
+    ctx.restore();
+  }
+  // casa
+  const hk = o.house || 0;
+  if (hk > 0) {
+    ctx.save(); glow(C.red, 20 * hk);
+    rectW(WORLD.house, `rgba(229,56,59,${.1 * hk})`, `rgba(229,56,59,${hk})`, 3); noGlow();
+    ctx.globalAlpha = hk; rectW(WORLD.annex, 'rgba(229,56,59,.25)', C.red, 2);
+    ctx.restore();
+  }
+  // túnel (linha vermelha pontilhada)
+  if (o.route > 0) {
+    const x0 = wx(WORLD.tunnelStart), x1 = wx(lerp(WORLD.tunnelStart, WORLD.tunnelEnd, o.route)), y = wy(0);
+    ctx.save(); glow(C.red, 22); ctx.strokeStyle = C.red; ctx.lineWidth = 6; ctx.setLineDash([16, 10]); ctx.lineDashOffset = -t * 40;
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(x1, y, 9, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+}
+
+/* ---------- CORTE (vista lateral do subsolo) ---------- */
+// x em metros (horizontal); profundidade com escala vertical exagerada.
+const SEC = { sx: 12.5, sy: 64, gx: 860, gy: 430 };   // px/m horizontal, px/m vertical, origem
+let scam = { x: 0, d: 0, z: 1 };                       // foco (m), profundidade foco, zoom
+const sxp = x => SEC.gx + x * SEC.sx;
+const syp = d => SEC.gy + d * SEC.sy;
+const TUN_H = .7; // altura do túnel (m)
+// eixo do túnel: [x, profundidade do topo]
+function tunnelTop(x) {
+  if (x < WORLD.sewerX) return 3.0;
+  if (x < WORLD.sewerX + 1.2) return lerp(3.0, 2.3, (x - WORLD.sewerX) / 1.2);
+  return 2.3;
+}
+function drawSection(t, o = {}) {
+  ctx.save();
+  // câmera: zoom em torno do foco
+  const fx = sxp(scam.x), fy = syp(scam.d);
+  ctx.translate(W / 2, H / 2); ctx.scale(scam.z, scam.z); ctx.translate(-fx, -fy);
+  // céu noturno
+  ctx.fillStyle = '#080b10'; ctx.fillRect(-4000, -4000, 9000, 4000 + SEC.gy);
+  // solo em camadas
+  const g = ctx.createLinearGradient(0, SEC.gy, 0, SEC.gy + 7 * SEC.sy);
+  g.addColorStop(0, C.soilTop); g.addColorStop(.35, C.soil); g.addColorStop(1, C.soilDeep);
+  ctx.fillStyle = g; ctx.fillRect(-4000, SEC.gy, 9000, 4000);
+  ctx.strokeStyle = 'rgba(255,220,180,.05)'; ctx.lineWidth = 1;
+  for (let i = 1; i < 9; i++) { ctx.beginPath(); for (let x = -1200; x < 3200; x += 40) { const y = syp(i * .9) + Math.sin(x * .01 + i) * 4; x === -1200 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } ctx.stroke(); }
+  const r = rng(3); ctx.fillStyle = 'rgba(255,220,180,.07)';
+  for (let i = 0; i < 700; i++) { ctx.fillRect(-300 + r() * 2600, SEC.gy + 6 + r() * 500, 2, 2); }
+  // superfície
+  ctx.fillStyle = '#1b222b'; ctx.fillRect(-4000, SEC.gy - 4, 9000, 6);
+  // marcas de profundidade
+  for (let d = 1; d <= 5; d++) { txt(`-${d} m`, sxp(-74), syp(d) + 6, { size: 15, weight: 600, color: 'rgba(200,180,160,.35)', track: 1 }); ctx.fillStyle = 'rgba(200,180,160,.2)'; ctx.fillRect(sxp(-70), syp(d), 14, 1); }
+  // casa (fachada + edícula)
+  ctx.fillStyle = '#141b23'; ctx.strokeStyle = 'rgba(229,56,59,.8)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(sxp(-64), SEC.gy); ctx.lineTo(sxp(-64), syp(-3.2)); ctx.lineTo(sxp(-40), syp(-4.4)); ctx.lineTo(sxp(-22), syp(-3.2)); ctx.lineTo(sxp(-22), SEC.gy); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillRect(sxp(-20), syp(-2.4), (12) * SEC.sx, 2.4 * SEC.sy); ctx.strokeRect(sxp(-20), syp(-2.4), 12 * SEC.sx, 2.4 * SEC.sy);
+  ctx.fillStyle = 'rgba(242,169,59,.5)'; ctx.fillRect(sxp(-58), syp(-2.2), 26, 30); ctx.fillRect(sxp(-46), syp(-2.2), 26, 30);
+  txt('CASA ALUGADA', sxp(-43), syp(-4.4) - 18, { size: 20, weight: 700, color: C.red, align: 'center', track: 3 });
+  // avenida + carros
+  ctx.fillStyle = '#20272f'; ctx.fillRect(sxp(30), SEC.gy - 6, 16 * SEC.sx, 6);
+  txt('AV. DOM MANUEL', sxp(38), SEC.gy - 70, { size: 18, weight: 700, color: C.label, align: 'center', track: 3 });
+  if (o.cars) {
+    for (let i = 0; i < 3; i++) {
+      const cx = sxp(30) + ((t * 120 + i * 140) % (16 * SEC.sx + 120)) - 60;
+      if (cx < sxp(29) || cx > sxp(46)) continue;
+      ctx.fillStyle = '#3a4552'; ctx.fillRect(cx - 34, SEC.gy - 34, 68, 24); ctx.fillRect(cx - 20, SEC.gy - 50, 40, 18);
+      ctx.fillStyle = C.amber; ctx.fillRect(cx + 30, SEC.gy - 30, 6, 8);
+    }
+  }
+  // banco + caixa-forte + laje
+  ctx.fillStyle = '#121921'; ctx.strokeStyle = 'rgba(214,226,238,.7)'; ctx.lineWidth = 2;
+  ctx.fillRect(sxp(52), syp(-6.4), 80 * SEC.sx, 6.4 * SEC.sy); ctx.strokeRect(sxp(52), syp(-6.4), 80 * SEC.sx, 6.4 * SEC.sy);
+  for (let fl = 1; fl < 3; fl++) { ctx.strokeStyle = 'rgba(214,226,238,.15)'; ctx.beginPath(); ctx.moveTo(sxp(52), syp(-fl * 2.4)); ctx.lineTo(sxp(132), syp(-fl * 2.4)); ctx.stroke(); }
+  for (let i = 0; i < 12; i++) for (let j = 1; j < 3; j++) { ctx.fillStyle = 'rgba(214,226,238,.08)'; ctx.fillRect(sxp(78 + i * 4.4), syp(-j * 2.4) + 20, 24, 40); }
+  txt('BANCO CENTRAL', sxp(78), syp(-5.6), { size: 24, weight: 800, color: C.bank, track: 4 });
+  // caixa-forte (térreo)
+  ctx.fillStyle = o.vaultLit ? `rgba(242,169,59,${.15 + .25 * o.vaultLit})` : 'rgba(242,169,59,.08)';
+  ctx.fillRect(sxp(56), syp(-2.2), 18 * SEC.sx, 2.2 * SEC.sy);
+  ctx.strokeStyle = C.amber; ctx.lineWidth = 2.5; ctx.strokeRect(sxp(56), syp(-2.2), 18 * SEC.sx, 2.2 * SEC.sy);
+  txt('CAIXA-FORTE', sxp(65), syp(-1.1) + 7, { size: 18, weight: 800, color: C.amber, align: 'center', track: 3 });
+  // laje de concreto 1,10 m
+  ctx.fillStyle = C.concrete; ctx.fillRect(sxp(54), SEC.gy, 22 * SEC.sx, 1.1 * SEC.sy);
+  ctx.save(); ctx.beginPath(); ctx.rect(sxp(54), SEC.gy, 22 * SEC.sx, 1.1 * SEC.sy); ctx.clip();
+  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2;
+  for (let x = sxp(54) - 80; x < sxp(76); x += 14) { ctx.beginPath(); ctx.moveTo(x, SEC.gy + 1.1 * SEC.sy); ctx.lineTo(x + 60, SEC.gy); ctx.stroke(); }
+  ctx.restore();
+  // buraco na laje (corte)
+  if (o.cut > 0) {
+    const hh = 1.1 * SEC.sy * clamp(o.cut);
+    ctx.fillStyle = '#050608'; ctx.fillRect(sxp(62.2), SEC.gy + 1.1 * SEC.sy - hh, 1.6 * SEC.sx, hh);
+  }
+  if (o.breakK > 0) { // luz da caixa-forte vazando para o túnel
+    const lg = ctx.createLinearGradient(0, SEC.gy, 0, syp(2.6));
+    lg.addColorStop(0, `rgba(255,214,140,${.75 * o.breakK})`); lg.addColorStop(1, 'rgba(255,214,140,0)');
+    ctx.fillStyle = lg; ctx.beginPath(); ctx.moveTo(sxp(62.2), SEC.gy); ctx.lineTo(sxp(63.8), SEC.gy); ctx.lineTo(sxp(67), syp(2.6)); ctx.lineTo(sxp(59), syp(2.6)); ctx.closePath(); ctx.fill();
+  }
+  // esgoto
+  if (o.sewer > 0) {
+    ctx.save(); ctx.globalAlpha = o.sewer; const sx0 = sxp(WORLD.sewerX + .1), sy0 = syp(3.35);
+    ctx.fillStyle = '#0d2a26'; ctx.strokeStyle = '#3fb8a5'; ctx.lineWidth = 4; glow('#3fb8a5', 14);
+    ctx.beginPath(); ctx.arc(sx0, sy0, 26, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); noGlow();
+    ctx.restore();
+  }
+  // túnel desenhado até "len" metros
+  const len = o.len || 0;
+  if (len > 0 || o.shaft > 0) {
+    const shaftK = o.shaft ?? 1; const xs = WORLD.tunnelStart;
+    // poço de acesso (3 m)
+    ctx.fillStyle = '#050608'; ctx.fillRect(sxp(xs) - 10, SEC.gy, 20, 3.7 * SEC.sy * shaftK);
+    // galeria
+    const xe = xs + len; ctx.beginPath();
+    ctx.moveTo(sxp(xs), syp(tunnelTop(xs)));
+    for (let x = xs; x <= xe; x += .25) ctx.lineTo(sxp(x), syp(tunnelTop(x)));
+    for (let x = xe; x >= xs; x -= .25) ctx.lineTo(sxp(x), syp(tunnelTop(x) + TUN_H));
+    ctx.closePath(); ctx.fillStyle = '#040506'; ctx.fill();
+    ctx.save(); glow(C.red, 16); ctx.strokeStyle = C.red; ctx.lineWidth = 2.5; ctx.stroke(); ctx.restore();
+    // escoras (≈900 tábuas) — marcas a cada 1,5 m
+    ctx.strokeStyle = 'rgba(196,140,80,.55)'; ctx.lineWidth = 2;
+    for (let x = xs + .75; x < xe; x += 1.5) { ctx.beginPath(); ctx.moveTo(sxp(x), syp(tunnelTop(x))); ctx.lineTo(sxp(x), syp(tunnelTop(x) + TUN_H)); ctx.stroke(); }
+    // lâmpadas a cada 6 m
+    if (o.lights > 0) for (let x = xs + 3; x < xe; x += 6) {
+      const on = clamp((o.lights * 80 - (x - xs)) / 6); if (on <= 0) continue;
+      ctx.save(); ctx.globalAlpha = on; glow('#ffd27a', 20); ctx.fillStyle = '#ffd27a';
+      ctx.beginPath(); ctx.arc(sxp(x), syp(tunnelTop(x)) + 7, 4, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+    // subida final até a laje
+    if (o.riser > 0) { const top = lerp(2.3, 1.1, o.riser); ctx.fillStyle = '#040506'; ctx.fillRect(sxp(62.2), syp(top), 1.6 * SEC.sx, syp(2.3) - syp(top) + 2); ctx.save(); glow(C.red, 12); ctx.strokeStyle = C.red; ctx.lineWidth = 2.5; ctx.strokeRect(sxp(62.2), syp(top), 1.6 * SEC.sx, syp(2.3) - syp(top)); ctx.restore(); }
+    // ponta luminosa
+    if (len < 75) { ctx.save(); glow(C.red, 30); ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(sxp(xe), syp(tunnelTop(xe) + TUN_H / 2), 9, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+  }
+  ctx.restore();
+  return { fx, fy };
+}
+// converte coordenada do corte (já com câmera) para tela — para HUD alinhado
+function secToScreen(x, d) { return { x: (sxp(x) - sxp(scam.x)) * scam.z + W / 2, y: (syp(d) - syp(scam.d)) * scam.z + H / 2 }; }
+
+/* ---------- COFRE (vista de cima, interior) ---------- */
+function drawVault(t, p) {
+  ctx.fillStyle = '#0b0f14'; ctx.fillRect(0, 0, W, H);
+  const room = { x: 300, y: 200, w: 1320, h: 590 };
+  ctx.fillStyle = '#10161d'; ctx.fillRect(room.x, room.y, room.w, room.h);
+  ctx.strokeStyle = C.amber; ctx.lineWidth = 4; ctx.strokeRect(room.x, room.y, room.w, room.h);
+  ctx.strokeStyle = 'rgba(242,169,59,.07)'; ctx.lineWidth = 1;
+  for (let x = room.x; x < room.x + room.w; x += 40) { ctx.beginPath(); ctx.moveTo(x, room.y); ctx.lineTo(x, room.y + room.h); ctx.stroke(); }
+  for (let y = room.y; y < room.y + room.h; y += 40) { ctx.beginPath(); ctx.moveTo(room.x, y); ctx.lineTo(room.x + room.w, y); ctx.stroke(); }
+  // lado esquerdo: notas novas (seriadas) — intocadas
+  txt('NOTAS NOVAS · SERIADAS', room.x + 300, room.y + 50, { size: 20, weight: 700, color: C.dim, align: 'center', track: 3 });
+  for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) { ctx.fillStyle = '#26303b'; ctx.fillRect(room.x + 90 + i * 72, room.y + 90 + j * 72, 56, 56); }
+  ctx.fillStyle = 'rgba(10,14,19,.55)'; ctx.fillRect(room.x + 70, room.y + 75, 450, 450);
+  txt('NÃO LEVADAS', room.x + 295, room.y + 310, { size: 30, weight: 800, color: 'rgba(214,226,238,.55)', align: 'center', track: 5 });
+  // lado direito: notas usadas R$ 50 — alvo
+  txt('NOTAS USADAS · R$ 50', room.x + 960, room.y + 50, { size: 20, weight: 700, color: C.amber, align: 'center', track: 3 });
+  const holeX = room.x + 640, holeY = room.y + room.h - 70;
+  const N = 8 * 6; const taken = Math.floor(N * eio(seg(p, .08, .92)));
+  let k = 0;
+  for (let j = 0; j < 6; j++) for (let i = 0; i < 8; i++) {
+    const bx = room.x + 700 + i * 72, by = room.y + 90 + j * 72; const idx = k++;
+    if (idx < taken - 1) continue;
+    if (idx === taken - 1 || idx === taken) {
+      // pacote em trânsito até o buraco
+      const loc = (N * eio(seg(p, .08, .92))) % 1; const m = idx === taken ? loc : 1;
+      ctx.fillStyle = C.amber; ctx.globalAlpha = 1 - m * .6;
+      ctx.fillRect(lerp(bx, holeX - 28, eio(m)), lerp(by, holeY - 28, eio(m)), 56, 56); ctx.globalAlpha = 1;
+      if (idx === taken - 1) continue; else continue;
+    }
+    ctx.fillStyle = '#c98a2c'; ctx.fillRect(bx, by, 56, 56);
+    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2; ctx.strokeRect(bx + 6, by + 6, 44, 44);
+  }
+  // buraco no piso
+  ctx.save(); glow(C.red, 30); ctx.fillStyle = '#030405'; ctx.strokeStyle = C.red; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.ellipse(holeX, holeY, 46, 30, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.restore();
+  txt('ENTRADA DO TÚNEL', holeX, holeY + 58, { size: 17, weight: 700, color: C.red, align: 'center', track: 3 });
+  // trilha rente à parede (desviando dos sensores)
+  ctx.save(); ctx.strokeStyle = 'rgba(229,56,59,.5)'; ctx.setLineDash([6, 10]); ctx.lineWidth = 2; ctx.lineDashOffset = -t * 30;
+  ctx.beginPath(); ctx.moveTo(holeX, holeY - 30); ctx.lineTo(holeX, room.y + 30); ctx.lineTo(room.x + room.w - 30, room.y + 30); ctx.stroke(); ctx.restore();
+  return { taken, N };
+}
+
+/* ---------- HUD / tipografia ---------- */
+const CHAPTERS = { gancho: '01 · O ALVO', terreno: '02 · O TERRENO', fachada: '03 · O DISFARCE', tunel: '04 · O TÚNEL', esgoto: '05 · O IMPREVISTO', laje: '06 · A LAJE', cofre: '07 · O COFRE', fecho: '08 · A FUGA' };
+function clockFor(t) {
+  const sc = sceneAt(t).s.id;
+  if (sc === 'fachada' || sc === 'tunel' || sc === 'esgoto') return ['MAI — AGO 2005', 'ESCAVAÇÃO: 20h ÀS 4h'];
+  if (sc === 'cofre') { const k = eio(P('cofre', t)); const m = Math.round(lerp(22 * 60, 30 * 60, k)); const hh = Math.floor(m / 60) % 24, mm = m % 60; return [`${hh < 22 ? 'SÁB 06.08.2005' : 'SEX 05.08.2005'}`, `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`]; }
+  if (sc === 'fecho') return ['SEG 08.08.2005', 'DESCOBERTA DO FURTO'];
+  return ['SEX 05.08.2005', '21:00'];
+}
+function drawHUD(t, alpha) {
+  if (alpha <= 0) return;
+  ctx.save(); ctx.globalAlpha = alpha;
+  // marca + caso
+  ctx.fillStyle = C.red; ctx.fillRect(64, 58, 14, 14);
+  txt('MAPA DO CRIME', 90, 72, { size: 20, weight: 800, color: C.text, track: 4 });
+  txt('CASO 01 · FURTO AO BANCO CENTRAL · FORTALEZA–CE', 64, 104, { size: 16, weight: 600, color: C.dim, track: 2 });
+  // relógio
+  const [d, h] = clockFor(t);
+  txt(d, W - 64, 74, { size: 20, weight: 700, color: C.dim, align: 'right', track: 3 });
+  if (/^\d\d:\d\d$/.test(h)) txt(h, W - 64, 118, { size: 40, weight: 800, color: C.amber, align: 'right', track: 2, font: '"DejaVu Sans Mono", monospace' });
+  else txt(h, W - 64, 108, { size: 22, weight: 800, color: C.amber, align: 'right', track: 3 });
+  // capítulo
+  const { s, local } = sceneAt(t); const ck = eout(clamp(local / .5));
+  ctx.save(); ctx.globalAlpha *= ck; const cx = 64 - (1 - ck) * 40;
+  ctx.fillStyle = 'rgba(8,11,15,.8)'; ctx.font = `700 18px ${FONT}`; ctx.letterSpacing = '4px';
+  const cw = ctx.measureText(CHAPTERS[s.id]).width + 34; ctx.fillRect(cx, 150, cw, 40);
+  ctx.fillStyle = C.red; ctx.fillRect(cx, 150, 4, 40);
+  txt(CHAPTERS[s.id], cx + 18, 177, { size: 18, weight: 700, color: C.text, track: 4 }); ctx.restore();
+  txt('REPRESENTAÇÃO ILUSTRATIVA · FORA DE ESCALA', 64, H - 40, { size: 13, weight: 600, color: 'rgba(135,150,168,.6)', track: 2 });
+  ctx.restore();
+}
+
+/* legendas: cada frase do SRT é quebrada em blocos de ~5 palavras */
+const HIL = /\d|milhões|metros|metro|concreto|esgoto|grama|sintética|túnel|diamante|toneladas|cinquenta|segunda|mapa|crime|setenta|sessenta|cem|oito|três|banco|fácil|rastrear|casa/i;
+const CAP_CHUNKS = (() => {
+  const out = [];
+  for (const s of TL.scenes) for (const c of s.cues) {
+    const words = c.text.split(/\s+/); const groups = []; let g = [];
+    for (const w of words) { g.push(w); const len = g.join(' ').length; if (len > 26 || /[.,:;]$/.test(w) && len > 12) { groups.push(g); g = []; } }
+    if (g.length) groups.push(g);
+    const total = groups.reduce((a, gg) => a + gg.join(' ').length, 0); let tt = c.start;
+    for (const gg of groups) { const d = (c.end - c.start) * gg.join(' ').length / total; out.push({ start: tt, end: tt + d, words: gg }); tt += d; }
+  }
+  return out;
+})();
+function drawCaption(t) {
+  const c = CAP_CHUNKS.find(c => t >= c.start && t < c.end + .05); if (!c) return;
+  const k = eout(clamp((t - c.start) / .12)); const size = 54;
+  ctx.save(); ctx.font = `800 ${size}px ${FONT}`; ctx.letterSpacing = '0px';
+  const parts = c.words.map(w => ({ w, wd: ctx.measureText(w.toUpperCase()).width })); const sp = 16;
+  const total = parts.reduce((a, p) => a + p.wd, 0) + sp * (parts.length - 1);
+  let x = W / 2 - total / 2; const y = H - 120 + (1 - k) * 14;
+  ctx.globalAlpha = k; ctx.fillStyle = 'rgba(5,7,10,.78)'; ctx.fillRect(W / 2 - total / 2 - 28, y - size + 4, total + 56, size + 26);
+  for (const p of parts) {
+    const hi = HIL.test(p.w.replace(/[.,:;]/g, ''));
+    ctx.fillStyle = hi ? C.amber : '#ffffff'; ctx.textBaseline = 'alphabetic'; ctx.fillText(p.w.toUpperCase(), x, y + 8); x += p.wd + sp;
+  }
+  ctx.restore();
+}
+function counter(label, value, x, y, color = C.amber, alpha = 1, align = 'left', size = 64) {
+  ctx.save(); ctx.globalAlpha *= alpha;
+  txt(label, x, y, { size: 18, weight: 700, color: C.dim, align, track: 4 });
+  glow(color, 24); txt(value, x, y + size + 6, { size, weight: 900, color, align, font: FONT }); ctx.restore();
+}
+const brl = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+
+/* ---------- pós: vinheta + grão ---------- */
+const GRAIN = Array.from({ length: 6 }, (_, i) => {
+  const c = document.createElement('canvas'); c.width = 480; c.height = 270; const g = c.getContext('2d');
+  const im = g.createImageData(480, 270); const r = rng(100 + i);
+  for (let p = 0; p < im.data.length; p += 4) { const v = r() * 255; im.data[p] = im.data[p + 1] = im.data[p + 2] = v; im.data[p + 3] = 14; }
+  g.putImageData(im, 0, 0); return c;
+});
+function post(t) {
+  const v = ctx.createRadialGradient(W / 2, H / 2, H * .35, W / 2, H / 2, H * .95);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.6)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(GRAIN[Math.floor(t * 24) % GRAIN.length], 0, 0, W, H);
+}
+
+/* =====================================================================
+   CENAS
+   ===================================================================== */
+function mapCam(t) {
+  // keyframes de câmera do mapa ao longo do vídeo
+  const g = P('gancho', t), te = P('terreno', t), f = P('fachada', t), fe = P('fecho', t);
+  if (sceneAt(t).s.id === 'gancho') { const k = eio(seg(g, .0, 1)); return { x: lerp(65, 50, k), y: 0, s: lerp(22, 15, k) }; }
+  if (sceneAt(t).s.id === 'terreno') { const k = eio(seg(te, 0, .55)); return { x: lerp(50, 5, k), y: lerp(0, -5, k), s: lerp(15, 6.4, k) }; }
+  if (sceneAt(t).s.id === 'fachada') { const k = eio(seg(f, 0, .4)); return { x: lerp(5, -40, k), y: lerp(-5, 0, k), s: lerp(6.4, 12, k) }; }
+  const k = eio(seg(fe, 0, .5)); return { x: lerp(60, 0, k), y: 0, s: lerp(14, 5.2, k) };
+}
+
+function sceneMap(t) {
+  const id = sceneAt(t).s.id; cam = mapCam(t);
+  const g = P('gancho', t), te = P('terreno', t), f = P('fachada', t), fe = P('fecho', t);
+  const o = { bank: 0, vault: 0, house: 0, route: 0 };
+  if (id === 'gancho') { o.vault = eout(seg(g, .1, .3)); o.bank = .3; }
+  if (id === 'terreno') { o.vault = 1; o.bank = eout(seg(te, .1, .35)); o.house = eout(seg(te, .55, .75)); }
+  if (id === 'fachada') { o.bank = 1; o.vault = 1; o.house = 1; }
+  if (id === 'fecho') { o.bank = 1; o.vault = 1; o.house = 1; o.route = eio(seg(fe, .05, .4)); }
+  drawMap(t, o);
+
+  if (id === 'gancho') {
+    const v = { x: wx(65), y: wy(0) };
+    reticle(v.x, v.y, 120, C.red, t, eout(seg(g, .05, .2)));
+    tag(v.x + 170, v.y - 90, 'CAIXA-FORTE', 'BANCO CENTRAL · FORTALEZA', C.amber, eout(seg(g, .15, .3)));
+    tag(v.x + 170, v.y + 10, '1,10 m DE CONCRETO', 'ENTRE O TÚNEL E O DINHEIRO', C.red, eout(seg(g, .45, .6)));
+    const mk = eio(seg(g, .5, .95));
+    counter('NO COFRE, EM NOTAS DE R$ 50', brl(164700000 * mk), v.x - 1150 + 20, v.y + 210, C.amber, seg(g, .48, .58), 'left', 92);
+  }
+  if (id === 'terreno') {
+    tag(wx(56), wy(16), 'BANCO CENTRAL', 'AV. DOM MANUEL × R. HERÁCLITO GRAÇA', C.bank, eout(seg(te, .15, .35)));
+    pin(wx(-36), wy(-8), C.red, 1.1, eout(seg(te, .55, .7)));
+    tag(wx(-64), wy(14), 'CASA ALUGADA', 'RUA 25 DE MARÇO, 1071', C.red, eout(seg(te, .6, .75)));
+    dimLine(wx(-36), wy(-34), wx(65), wy(-34), '≈ 100 m', eio(seg(te, .7, .95)));
+  }
+  if (id === 'fachada') {
+    // placa da fachada
+    const k = eout(seg(f, .3, .45)); const fx = wx(-64), fy = wy(0);
+    ctx.save(); ctx.globalAlpha = k; ctx.translate(fx + 200, fy - 150);
+    ctx.fillStyle = '#1f6b3a'; ctx.fillRect(-170, -36, 340, 52); glow('#3fd47a', 18); ctx.strokeStyle = '#3fd47a'; ctx.lineWidth = 3; ctx.strokeRect(-170, -36, 340, 52); noGlow();
+    txt('GRAMA SINTÉTICA', 0, -2, { size: 26, weight: 900, color: '#d9ffe6', align: 'center', base: 'middle', track: 3 }); ctx.restore();
+    tag(wx(-64) + 30, wy(8) + 40, 'EMPRESA DE FACHADA', 'REGISTRADA COM NOME FALSO', '#3fd47a', eout(seg(f, .35, .5)));
+    // sacos de terra saindo da edícula para a rua
+    const n = 14; for (let i = 0; i < n; i++) {
+      const ph = ((t * .45 + i / n) % 1); const on = seg(f, .45, .55); if (on <= 0) continue;
+      const x = lerp(wx(-14), wx(-71), eio(ph)), y = wy(0) + Math.sin(i * 3.1) * 3 * cam.s;
+      ctx.globalAlpha = on * (ph < .9 ? 1 : (1 - ph) * 10); ctx.fillStyle = '#8a6a44'; ctx.fillRect(x - 9, y - 9, 18, 18); ctx.globalAlpha = 1;
+    }
+    // caminhonete na rua
+    const tk = eout(seg(f, .45, .6)); if (tk > 0) {
+      const tx = wx(-71), ty = wy(-26) + (1 - tk) * -200;
+      ctx.fillStyle = '#3a4552'; ctx.fillRect(tx - 40, ty - 80, 80, 160); ctx.fillStyle = '#8a6a44'; ctx.fillRect(tx - 30, ty - 20, 60, 90); ctx.fillStyle = C.amber; ctx.fillRect(tx - 34, ty - 84, 14, 8); ctx.fillRect(tx + 20, ty - 84, 14, 8);
+    }
+    counter('SACOS DE TERRA', 'SAINDO TODO DIA', wx(-80) - 60, wy(-30) - 40, C.amber, seg(f, .6, .7), 'right', 48);
+  }
+  if (id === 'fecho') {
+    tag(wx(-12), wy(-34), 'TÚNEL · 75,4 m', 'DA EDÍCULA À CAIXA-FORTE', C.red, eout(seg(fe, .3, .45)), 'center');
+    // o dinheiro se espalha: rotas de fuga
+    const sk = seg(fe, .45, .85); if (sk > 0) {
+      const r = rng(11); for (let i = 0; i < 18; i++) {
+        const a = r() * Math.PI * 2, dist = (300 + r() * 900) * eio(sk);
+        const x = wx(-36) + Math.cos(a) * dist, y = wy(0) + Math.sin(a) * dist * .7;
+        ctx.save(); ctx.strokeStyle = 'rgba(229,56,59,.35)'; ctx.setLineDash([4, 8]); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(wx(-36), wy(0)); ctx.lineTo(x, y); ctx.stroke(); ctx.setLineDash([]);
+        glow(C.red, 14); ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+    }
+  }
+}
+
+function sceneSection(t) {
+  const id = sceneAt(t).s.id; const tu = P('tunel', t), es = P('esgoto', t), la = P('laje', t);
+  const o = { len: 0, shaft: 1, lights: 0, sewer: 0, cars: true, riser: 0, cut: 0, breakK: 0, vaultLit: 0 };
+  if (id === 'tunel') {
+    const k = eio(seg(tu, .05, .25)); scam = { x: lerp(-12, 4, k), d: lerp(2, 1.5, k), z: lerp(2.2, 1, k) };
+    o.shaft = eout(seg(tu, 0, .18)); o.len = 60 * eio(seg(tu, .2, .95)); o.lights = seg(tu, .55, 1);
+  } else if (id === 'esgoto') {
+    o.lights = 1; o.sewer = eout(seg(es, .05, .2));
+    const zk = eio(seg(es, 0, .2)) * (1 - eio(seg(es, .75, 1)));
+    scam = { x: lerp(4, 47, zk), d: lerp(1.5, 2.1, zk), z: lerp(1, 1.6, zk) };
+    o.len = lerp(60, 75, eio(seg(es, .45, .9)));
+  } else { // laje
+    o.lights = 1; o.sewer = 1; o.len = 75; o.riser = eio(seg(la, 0, .2));
+    const zk = eio(seg(la, 0, .25)); scam = { x: lerp(4, 63, zk), d: lerp(1.5, .8, zk), z: lerp(1, 2.3, zk) };
+    o.cut = eio(seg(la, .3, .85)); o.breakK = eout(seg(la, .86, 1)); o.vaultLit = o.breakK;
+  }
+  // tremor do tráfego quando o túnel passa colado ao asfalto
+  if (id === 'esgoto' && es > .5 && es < .9) { ctx.save(); ctx.translate(Math.sin(t * 61) * 2, Math.cos(t * 47) * 2); }
+  drawSection(t, o);
+  if (id === 'esgoto' && es > .5 && es < .9) ctx.restore();
+
+  if (id === 'tunel') {
+    const sh = secToScreen(WORLD.tunnelStart, 1.5); dimLine(sh.x - 40, secToScreen(0, 0).y, sh.x - 40, secToScreen(0, 3).y, '', eio(seg(tu, .05, .2)));
+    txt('3 m', sh.x - 60, (secToScreen(0, 0).y + secToScreen(0, 3).y) / 2 + 10, { size: 32, weight: 800, color: C.amber, align: 'right', alpha: seg(tu, .12, .2) });
+    counter('EXTENSÃO ESCAVADA', `${(o.len).toFixed(1).replace('.', ',')} m`, W - 64, 820, C.red, seg(tu, .2, .3), 'right', 80);
+    tag(64, 640, '≈ 900 TÁBUAS', 'ESCORAMENTO · LUZ · VENTILAÇÃO', C.amber, eout(seg(tu, .6, .75)));
+  }
+  if (id === 'esgoto') {
+    const s = secToScreen(WORLD.sewerX, 3.35);
+    tag(s.x + 60, s.y + 60, 'ESGOTO', 'NÃO CONSTAVA NA PLANTA', '#3fb8a5', eout(seg(es, .12, .25)));
+    if (es > .3) tag(s.x - 420, s.y - 220, 'TÚNEL SOBE ≈ 70 cm', 'TRÁFEGO VIBRANDO ACIMA', C.amber, eout(seg(es, .3, .42)));
+    counter('EXTENSÃO ESCAVADA', `${(o.len).toFixed(1).replace('.', ',')} m`, W - 64, 820, C.red, 1 - seg(es, .05, .15) + seg(es, .75, .85), 'right', 80);
+  }
+  if (id === 'laje') {
+    const a = secToScreen(62.2, 1.1), b = secToScreen(63.8, 1.1), top = secToScreen(63, 0);
+    // serra circular
+    const sk = seg(la, .25, .88);
+    if (sk > 0 && sk < 1) {
+      const sy = lerp(a.y, top.y, eio(seg(la, .3, .85))) + 30; const sx = (a.x + b.x) / 2;
+      ctx.save(); ctx.translate(sx, sy); ctx.rotate(t * 30); glow('#ffffff', 10);
+      ctx.strokeStyle = '#d6e2ee'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, 46, 0, Math.PI * 2); ctx.stroke();
+      for (let i = 0; i < 16; i++) { ctx.rotate(Math.PI / 8); ctx.beginPath(); ctx.moveTo(46, 0); ctx.lineTo(56, 6); ctx.stroke(); }
+      ctx.restore();
+      const r = rng(Math.floor(t * 30)); ctx.save(); glow(C.amber, 12);
+      for (let i = 0; i < 26; i++) { const an = Math.PI * .6 + r() * Math.PI * .8, d = 40 + r() * 140; ctx.fillStyle = r() > .5 ? C.amber : '#fff3c4'; ctx.fillRect(sx + Math.cos(an) * d, sy - 40 + Math.sin(an) * d * -1, 4, 4); }
+      ctx.restore();
+    }
+    tag(b.x + 160, top.y - 10, 'LAJE · 1,10 m', 'CONCRETO ARMADO', C.text, eout(seg(la, .2, .35)));
+    tag(b.x + 160, top.y + 90, 'SERRA C/ DISCO DIAMANTADO', 'CORTE VERTICAL', C.amber, eout(seg(la, .4, .55)));
+    if (la > .86) { ctx.save(); ctx.globalAlpha = (1 - seg(la, .86, 1)) * .6; ctx.fillStyle = '#fff1d0'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+  }
+}
+
+function sceneVault(t) {
+  const p = P('cofre', t);
+  const { taken, N } = drawVault(t, p);
+  const k = taken / N;
+  counter('LEVADO', brl(164700000 * k), 64, 830, C.amber, eout(seg(p, .05, .15)), 'left', 72);
+  counter('PESO', `${(3.5 * k).toFixed(1).replace('.', ',')} t`, W - 64, 830, C.amber, eout(seg(p, .05, .15)), 'right', 72);
+}
+
+function endCard(t, k) {
+  if (k <= 0) return;
+  ctx.save(); ctx.globalAlpha = k; ctx.fillStyle = 'rgba(7,9,12,.92)'; ctx.fillRect(0, 0, W, H);
+  pin(W / 2, 470, C.red, 2.2);
+  txt('MAPA DO CRIME', W / 2, 590, { size: 104, weight: 900, color: C.text, align: 'center', track: 10 });
+  txt('O CRIME VISTO DE CIMA', W / 2, 650, { size: 26, weight: 700, color: C.red, align: 'center', track: 12 });
+  txt('CASO 01 · O FURTO DO BANCO CENTRAL — EPISÓDIO COMPLETO EM BREVE', W / 2, 760, { size: 22, weight: 600, color: C.dim, align: 'center', track: 3 });
+  txt('Fontes: Estadão, “Os Toupeiras” (2015); Polícia Federal; Justiça Federal do Ceará. Representação ilustrativa.', W / 2, H - 60, { size: 16, weight: 500, color: 'rgba(135,150,168,.7)', align: 'center' });
+  ctx.restore();
+}
+
+/* transição entre "mundos" (mapa / corte / cofre) com wipe + flash vermelho */
+function worldOf(id) { return ({ tunel: 'sec', esgoto: 'sec', laje: 'sec', cofre: 'vault' })[id] || 'map'; }
+function drawWorld(w, t) { if (w === 'map') sceneMap(t); else if (w === 'sec') sceneSection(t); else sceneVault(t); }
+
+window.renderFrame = function (t) {
+  ctx.save(); ctx.clearRect(0, 0, W, H); ctx.letterSpacing = '0px';
+  const { s, local } = sceneAt(t); const w = worldOf(s.id);
+  const prev = TL.scenes[TL.scenes.indexOf(s) - 1]; const pw = prev && worldOf(prev.id);
+  drawWorld(w, t);
+  if (prev && pw !== w && local < .5) { // wipe: o mundo anterior sai pela direita
+    const k = eio(local / .5);
+    ctx.save(); ctx.beginPath(); ctx.rect(W * k, 0, W, H); ctx.clip(); drawWorld(pw, prev.end - .001); ctx.restore();
+    ctx.save(); glow(C.red, 30); ctx.fillStyle = C.red; ctx.fillRect(W * k - 6, 0, 6, H); ctx.restore();
+  }
+  // abertura: preto + datação datilografada
+  const intro = 1 - seg(t, 1.6, 2.2);
+  if (intro > 0) {
+    ctx.save(); ctx.globalAlpha = intro; ctx.fillStyle = '#050608'; ctx.fillRect(0, 0, W, H);
+    const s1 = '05.08.2005 — 21:00'; const n = Math.floor(seg(t, .1, .9) * s1.length);
+    txt(s1.slice(0, n), W / 2, H / 2 - 10, { size: 64, weight: 800, color: C.text, align: 'center', track: 6, font: '"DejaVu Sans Mono", monospace' });
+    txt('FORTALEZA · CEARÁ', W / 2, H / 2 + 50, { size: 24, weight: 700, color: C.red, align: 'center', track: 10, alpha: seg(t, .8, 1.2) });
+    ctx.restore();
+  }
+  const endK = seg(t, TL.total - 3.6, TL.total - 3.0);
+  drawHUD(t, seg(t, 1.8, 2.4) * (1 - endK));
+  if (endK < 1) drawCaption(t);
+  endCard(t, endK);
+  post(t);
+  ctx.restore();
+};
+
+/* modos especiais: thumbnail (1280x720) e avatar */
+window.renderThumb = function () {
+  ctx.save(); ctx.clearRect(0, 0, W, H);
+  cam = { x: 14, y: -14, s: 8.2 };
+  drawMap(10, { bank: 1, vault: 1, house: 1, route: 1 });
+  pin(wx(-36), wy(-8), C.red, 1.6); reticle(wx(65), wy(0), 110, C.red, 0.4);
+  const tg = ctx.createLinearGradient(0, 0, 0, 420); tg.addColorStop(0, 'rgba(7,9,12,.92)'); tg.addColorStop(1, 'rgba(7,9,12,0)');
+  ctx.fillStyle = tg; ctx.fillRect(0, 0, W, 420);
+  txt('75 METROS', 80, 215, { size: 200, weight: 900, color: '#ffffff', track: 2 });
+  txt('ATÉ O COFRE', 92, 318, { size: 92, weight: 900, color: C.amber, track: 4 });
+  txt('R$ 164,7 MILHÕES', W - 80, H - 90, { size: 120, weight: 900, color: C.red, align: 'right', track: 2 });
+  post(3); ctx.restore();
+};
+window.renderAvatar = function () {
+  ctx.save(); ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+  const cx = W / 2, cy = H / 2;
+  ctx.strokeStyle = 'rgba(120,150,180,.12)'; ctx.lineWidth = 2;
+  for (let i = -6; i <= 6; i++) { ctx.beginPath(); ctx.moveTo(cx + i * 70, cy - 500); ctx.lineTo(cx + i * 70, cy + 500); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx - 500, cy + i * 70); ctx.lineTo(cx + 500, cy + i * 70); ctx.stroke(); }
+  pin(cx, cy + 230, C.red, 7.5);
+  ctx.restore();
+};
+</script>
+</body>
+</html>
