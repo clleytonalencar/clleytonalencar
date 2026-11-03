@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Mapa do Crime — Piloto 01 (versão pixel)</title>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+/* =====================================================================
+   MAPA DO CRIME — versão "jogo 2D" (pixel art)
+   Tudo é desenhado num buffer 480x270 e ampliado 4x sem suavização.
+   Mesmo timeline/narração da versão motion graphics (window.TIMELINE).
+   Personagens são figuras genéricas: ninguém real é retratado.
+   ===================================================================== */
+const W = 1920, H = 1080, BW = 480, BH = 270, SC = 4;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const buf = document.createElement('canvas'); buf.width = BW; buf.height = BH;
+let b = buf.getContext('2d');
+// buffer do "mundo": permite zoom inteiro (2x) mantendo a UI em 1x
+const wbuf = document.createElement('canvas'); wbuf.width = BW; wbuf.height = BH; const wb = wbuf.getContext('2d');
+let VW = BW, VH = BH, Z = 1;
+function world(z, fn) { const main = b; Z = z; VW = BW / z; VH = BH / z; b = wb; b.clearRect(0, 0, BW, BH); fn(); b = main; b.imageSmoothingEnabled = false; b.drawImage(wbuf, 0, 0, VW, VH, 0, 0, BW, BH); }
+
+const PAL = {
+  sky: '#0b0f1e', sky2: '#141a33', moon: '#f4f1d0', star: '#cfd6ff', city: '#161c33',
+  soil1: '#3a2a1f', soil2: '#33251b', soil3: '#2b1f17', soilDeep: '#211811', stone: '#5a4a3d',
+  road: '#2a2e38', roadLine: '#c9a227', curb: '#555b66', walk: '#3d4452',
+  wall: '#4a5266', wallDark: '#363d4f', wallIn: '#2a3040', roof: '#8a3f36', roofDark: '#6a2f29',
+  bankWall: '#b8bfcc', bankDark: '#8d95a5', bankIn: '#3a4152', win: '#f2c14e', winOff: '#273046',
+  concrete: '#7d838c', concreteDark: '#5f646c', plank: '#9c6b3c', plankDark: '#6e4a2a',
+  tunnel: '#0d0907', lamp: '#ffe08a', uniform: '#3fa34d', uniformDark: '#2c7a37', pants: '#2b3a67', boots: '#16161c',
+  red: '#e5383b', amber: '#f2a93b', white: '#f4f4f4', water: '#5ec8e0', pipe: '#3d7f7a', pipeDark: '#24504c',
+  money: '#5fae63', moneyDark: '#3f7d43', sack: '#9a7650', sackDark: '#6f5436', ui: '#0b0d14', grey: '#9aa3b2',
+  tree: '#2f6b3a', treeDark: '#244f2c', truck: '#c94f3d', car1: '#4f7ac9', car2: '#d0d4dc', car3: '#c9a227',
+};
+
+/* ---------- utilidades ---------- */
+const clamp = (v, a = 0, c = 1) => Math.max(a, Math.min(c, v));
+const lerp = (a, c, k) => a + (c - a) * k;
+const seg = (p, a, c) => clamp((p - a) / (c - a));
+const eio = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+const eout = k => 1 - Math.pow(1 - k, 3);
+function hash(x, y) { let h = (x | 0) * 374761393 + (y | 0) * 668265263; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+function R(x, y, w, h, c) { b.fillStyle = c; b.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); }
+
+/* ---------- timeline ---------- */
+const TL = window.TIMELINE || { total: 61.6, scenes: [] };
+const SCN = {}; TL.scenes.forEach((s, i) => SCN[s.id] = { ...s, i });
+function sceneAt(t) {
+  let cur = TL.scenes[0]; for (const s of TL.scenes) if (t >= s.start) cur = s;
+  const last = cur === TL.scenes[TL.scenes.length - 1]; const st = cur === TL.scenes[0] ? 0 : cur.start; const en = last ? TL.total : cur.end;
+  return { s: cur, p: clamp((t - st) / (en - st)), local: t - st };
+}
+const P = (id, t) => { const s = SCN[id]; const st = s.i === 0 ? 0 : s.start; const en = s.i === TL.scenes.length - 1 ? TL.total : s.end; return clamp((t - st) / (en - st)); };
+
+/* ---------- fonte bitmap 5x7 (com acentos) ---------- */
+const G = {
+  A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'], B: ['####.', '#...#', '#...#', '####.', '#...#', '#...#', '####.'],
+  C: ['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'], D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
+  E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'], F: ['#####', '#....', '#....', '####.', '#....', '#....', '#....'],
+  G: ['.###.', '#...#', '#....', '#.###', '#...#', '#...#', '.####'], H: ['#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+  I: ['.###.', '..#..', '..#..', '..#..', '..#..', '..#..', '.###.'], J: ['..###', '...#.', '...#.', '...#.', '#..#.', '#..#.', '.##..'],
+  K: ['#...#', '#..#.', '#.#..', '##...', '#.#..', '#..#.', '#...#'], L: ['#....', '#....', '#....', '#....', '#....', '#....', '#####'],
+  M: ['#...#', '##.##', '#.#.#', '#.#.#', '#...#', '#...#', '#...#'], N: ['#...#', '##..#', '#.#.#', '#..##', '#...#', '#...#', '#...#'],
+  O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'], P: ['####.', '#...#', '#...#', '####.', '#....', '#....', '#....'],
+  Q: ['.###.', '#...#', '#...#', '#...#', '#.#.#', '#..#.', '.##.#'], R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
+  S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'], T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
+  U: ['#...#', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'], V: ['#...#', '#...#', '#...#', '#...#', '#...#', '.#.#.', '..#..'],
+  W: ['#...#', '#...#', '#...#', '#.#.#', '#.#.#', '##.##', '#...#'], X: ['#...#', '#...#', '.#.#.', '..#..', '.#.#.', '#...#', '#...#'],
+  Y: ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'], Z: ['#####', '....#', '...#.', '..#..', '.#...', '#....', '#####'],
+  0: ['.###.', '#...#', '#..##', '#.#.#', '##..#', '#...#', '.###.'], 1: ['..#..', '.##..', '..#..', '..#..', '..#..', '..#..', '.###.'],
+  2: ['.###.', '#...#', '....#', '...#.', '..#..', '.#...', '#####'], 3: ['####.', '....#', '....#', '.###.', '....#', '....#', '####.'],
+  4: ['...#.', '..##.', '.#.#.', '#..#.', '#####', '...#.', '...#.'], 5: ['#####', '#....', '####.', '....#', '....#', '#...#', '.###.'],
+  6: ['.###.', '#....', '#....', '####.', '#...#', '#...#', '.###.'], 7: ['#####', '....#', '...#.', '..#..', '.#...', '.#...', '.#...'],
+  8: ['.###.', '#...#', '#...#', '.###.', '#...#', '#...#', '.###.'], 9: ['.###.', '#...#', '#...#', '.####', '....#', '....#', '.###.'],
+  '.': ['.....', '.....', '.....', '.....', '.....', '.##..', '.##..'], ',': ['.....', '.....', '.....', '.....', '.##..', '..#..', '.#...'],
+  ':': ['.....', '.##..', '.##..', '.....', '.##..', '.##..', '.....'], ';': ['.....', '.##..', '.##..', '.....', '.##..', '..#..', '.#...'],
+  '-': ['.....', '.....', '.....', '#####', '.....', '.....', '.....'], '/': ['....#', '...#.', '...#.', '..#..', '.#...', '.#...', '#....'],
+  '$': ['..#..', '.####', '#.#..', '.###.', '..#.#', '####.', '..#..'], '!': ['..#..', '..#..', '..#..', '..#..', '..#..', '.....', '..#..'],
+  '?': ['.###.', '#...#', '....#', '...#.', '..#..', '.....', '..#..'], '(': ['...#.', '..#..', '.#...', '.#...', '.#...', '..#..', '...#.'],
+  ')': ['.#...', '..#..', '...#.', '...#.', '...#.', '..#..', '.#...'], '%': ['##..#', '##..#', '...#.', '..#..', '.#...', '#..##', '#..##'],
+  '≈': ['.....', '.##.#', '#.##.', '.....', '.##.#', '#.##.', '.....'], "'": ['..#..', '..#..', '.....', '.....', '.....', '.....', '.....'],
+  '"': ['.#.#.', '.#.#.', '.....', '.....', '.....', '.....', '.....'], '+': ['.....', '..#..', '..#..', '#####', '..#..', '..#..', '.....'],
+  '>': ['.#...', '..#..', '...#.', '....#', '...#.', '..#..', '.#...'], ' ': ['.....', '.....', '.....', '.....', '.....', '.....', '.....'],
+};
+const ACC = { 'Á': ['A', 'acute'], 'À': ['A', 'grave'], 'Â': ['A', 'circ'], 'Ã': ['A', 'tilde'], 'É': ['E', 'acute'], 'Ê': ['E', 'circ'], 'Í': ['I', 'acute'], 'Ó': ['O', 'acute'], 'Ô': ['O', 'circ'], 'Õ': ['O', 'tilde'], 'Ú': ['U', 'acute'], 'Ç': ['C', 'ced'] };
+const ACCP = { acute: ['...#.', '..#..'], grave: ['.#...', '..#..'], circ: ['..#..', '.#.#.'], tilde: ['.#.#.', '#.#..'] };
+function norm(s) { return s.toUpperCase().replace(/[—–]/g, '-').replace(/[·•]/g, '.').replace(/×/g, 'X').replace(/[“”]/g, '"'); }
+function textW(s, sc = 1) { return norm(s).length * 6 * sc - sc; }
+function T(s, x, y, color = PAL.white, sc = 1, shadow = '#000') {
+  s = norm(s); x = Math.round(x); y = Math.round(y);
+  const draw = (ox, oy, col) => {
+    b.fillStyle = col; let cx = ox;
+    for (const ch of s) {
+      let base = ch, acc = null; if (ACC[ch]) [base, acc] = ACC[ch];
+      const g = G[base] || G['?'];
+      for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) if (g[r][c] === '#') b.fillRect(cx + c * sc, oy + r * sc, sc, sc);
+      if (acc === 'ced') { b.fillRect(cx + 2 * sc, oy + 7 * sc, sc, sc); b.fillRect(cx + 1 * sc, oy + 8 * sc, sc, sc); }
+      else if (acc) { const a = ACCP[acc]; for (let r = 0; r < 2; r++) for (let c = 0; c < 5; c++) if (a[r][c] === '#') b.fillRect(cx + c * sc, oy + (r - 3) * sc, sc, sc); }
+      cx += 6 * sc;
+    }
+  };
+  if (shadow) draw(x + sc, y + sc, shadow);
+  draw(x, y, color);
+}
+function TC(s, cx, y, color, sc = 1, shadow) { T(s, cx - textW(s, sc) / 2, y, color, sc, shadow); }
+
+/* ---------- caixas de UI ---------- */
+function box(x, y, w, h, edge = PAL.white, fill = 'rgba(11,13,20,.92)') {
+  R(x + 1, y, w - 2, h, fill); R(x, y + 1, w, h - 2, fill);
+  R(x + 1, y, w - 2, 1, edge); R(x + 1, y + h - 1, w - 2, 1, edge); R(x, y + 1, 1, h - 2, edge); R(x + w - 1, y + 1, 1, h - 2, edge);
+}
+function label(s, x, y, color = PAL.amber, sub) {
+  const w = Math.max(textW(s), sub ? textW(sub) : 0) + 10, h = sub ? 24 : 13;
+  box(x, y, w, h, color); T(s, x + 5, y + 3, color, 1, null); if (sub) T(sub, x + 5, y + 14, PAL.grey, 1, null);
+}
+function bar(x, y, w, k, color, title) {
+  if (title) T(title, x, y - 10, PAL.white);
+  box(x, y, w, 9, PAL.white); R(x + 2, y + 2, Math.round((w - 4) * clamp(k)), 5, color);
+}
+function bang(x, y, color = PAL.red, t = 0) { // balão "!"
+  const yy = Math.round(y + Math.sin(t * 12) * 1);
+  box(x - 4, yy - 12, 9, 11, color, '#fff'); R(x - 1, yy - 1, 3, 2, '#fff'); R(x, yy - 10, 1, 5, color); R(x, yy - 4, 1, 1, color);
+}
+function arrowDown(x, y, color, t) { const yy = Math.round(y + Math.sin(t * 6) * 2); for (let i = 0; i < 5; i++) R(x - 4 + i, yy + i, 9 - i * 2, 1, color); R(x - 1, yy - 4, 3, 4, color); }
+
+/* ---------- sprites ---------- */
+const SPR = {
+  walk0: ['..hhhh..', '.hhhhhh.', '.hssses.', '..ssss..', '..cccc..', '.cccccc.', '.cccccs.', '.dcccc..', '..pppp..', '..p..p..', '.pp..pp.', '.b....b.'],
+  walk1: ['..hhhh..', '.hhhhhh.', '.hssses.', '..ssss..', '..cccc..', '.cccccc.', '.cccccs.', '.dcccc..', '..pppp..', '..pppp..', '...pp...', '...bb...'],
+  carry0: ['..hhhh..', '.hhhhhh.', '.hssses.', '..ssss..', '..cccss.', '.ccccc..', '.cccccc.', '.dcccc..', '..pppp..', '..p..p..', '.pp..pp.', '.b....b.'],
+  crouch0: ['..hhhh..', '.hhhhhh.', '.hssses.', '..ssss..', '.cccccc.', 'cccccccs', '.dccccc.', '.pppppp.', 'bb....bb'],
+  crouch1: ['........', '..hhhh..', '.hhhhhh.', '.hssses.', '.cssss..', 'cccccccs', '.dccccc.', '.pppppp.', 'bb....bb'],
+  look: ['..hhhh..', '.hhhhhh.', '.hsssse.', '..ssss..', '.cccccs.', 'ccccccs.', '.dccccc.', '.pppppp.', 'bb....bb'],
+  top0: ['..hhhh..', '.hhhhhh.', 'cchhhhcc', 'cccccccc', 'cccccccc', '.cccccc.', '..b..b..', '..b.....'],
+  top1: ['..hhhh..', '.hhhhhh.', 'cchhhhcc', 'cccccccc', 'cccccccc', '.cccccc.', '..b..b..', '.....b..'],
+};
+const CREW = [{ h: '#2b1d14', s: '#c68642' }, { h: '#111111', s: '#8d5524' }, { h: '#c9a24a', s: '#e0ac69' }, { h: '#5a3a22', s: '#a86b3c' }];
+function spr(name, x, y, look, flip = false, shirt = PAL.uniform, shirtD = PAL.uniformDark, sc = 1) {
+  const S = SPR[name]; const map = { h: look.h, s: look.s, e: '#111', c: shirt, d: shirtD, p: PAL.pants, b: PAL.boots };
+  const w = S[0].length; x = Math.round(x); y = Math.round(y);
+  for (let r = 0; r < S.length; r++) for (let c = 0; c < w; c++) {
+    const ch = S[r][flip ? w - 1 - c : c]; if (ch === '.') continue; b.fillStyle = map[ch]; b.fillRect(x + c * sc, y + r * sc, sc, sc);
+  }
+}
+function sack(x, y) { R(x, y + 1, 6, 4, PAL.sack); R(x + 1, y, 4, 1, PAL.sackDark); R(x, y + 4, 6, 1, PAL.sackDark); }
+function bundle2(x, y) { R(x, y, 12, 8, PAL.money); R(x, y + 6, 12, 2, PAL.moneyDark); R(x + 4, y, 4, 8, PAL.amber); }
+function bundle(x, y) { R(x, y, 6, 4, PAL.money); R(x, y + 3, 6, 1, PAL.moneyDark); R(x + 2, y, 2, 4, PAL.amber); }
+
+/* =====================================================================
+   MUNDO EM CORTE (vista lateral, "casa de boneca")
+   X em px de mundo (0 = início do túnel na edícula), Y = 0 na superfície.
+   Escala ilustrativa: ~7 px por metro na horizontal.
+   ===================================================================== */
+const M = 7; // px por metro
+const SIDE = { houseX0: -370, houseX1: -96, ediX0: -30, ediX1: 16, aveX0: 294, aveX1: 392, bankX0: 448, bankX1: 780, vaultX0: 476, vaultX1: 602, slabB: 12, sewerX: 420, endX: 525 };
+function tunTop(X) { if (X < SIDE.sewerX - 6) return 30; if (X < SIDE.sewerX + 4) return lerp(30, 22, (X - SIDE.sewerX + 6) / 10); return 22; }
+let cam = { x: 0, y: 0 };
+const sx = X => Math.round(X - cam.x + VW / 2), sy = Y => Math.round(Y - cam.y + VH / 2);
+const zx = X => sx(X) * Z, zy = Y => sy(Y) * Z; // posição já ampliada (para UI)
+
+function drawSide(t, o) {
+  // céu
+  const gy = sy(0);
+  R(0, 0, VW, VH, PAL.sky);
+  for (let y = 0; y < gy; y += 2) if (y > gy - 70) R(0, y, VW, 2, y > gy - 30 ? PAL.sky2 : PAL.sky);
+  for (let i = 0; i < 70; i++) { const x = (hash(i, 1) * 900 - cam.x * .05) % VW; const y = hash(i, 2) * (gy - 20); if (y > 0) R((x + VW) % VW, y, 1, 1, hash(i, 3) > .8 ? PAL.white : PAL.star); }
+  const mx = VW - 50 - cam.x * .02; R(mx, gy - 110, 8, 8, PAL.moon); R(mx + 5, gy - 112, 5, 5, PAL.sky);
+  // silhueta da cidade ao fundo (paralaxe)
+  for (let i = -10; i < 40; i++) { const bx = i * 26 - (cam.x * .3) % 26; const h = 18 + hash(i + Math.floor(cam.x * .3 / 26), 9) * 40; R(bx, gy - h, 24, h, PAL.city); if (hash(i, 5) > .5) R(bx + 6, gy - h + 6, 2, 2, '#2b3456'); }
+
+  // SOLO (tiles 8x8 com variação)
+  const X0 = cam.x - VW / 2, Y0 = cam.y - VH / 2;
+  for (let ty = Math.max(0, Math.floor(Y0 / 8)); ty * 8 < Y0 + VH; ty++) for (let tx = Math.floor(X0 / 8); tx * 8 < X0 + VW; tx++) {
+    const hv = hash(tx, ty); const deep = ty > 7 ? PAL.soilDeep : ty > 4 ? PAL.soil3 : null;
+    R(sx(tx * 8), sy(ty * 8), 8, 8, deep || (hv < .33 ? PAL.soil1 : hv < .66 ? PAL.soil2 : PAL.soil3));
+    if (hv > .93) { R(sx(tx * 8) + 2, sy(ty * 8) + 3, 3, 2, PAL.stone); R(sx(tx * 8) + 3, sy(ty * 8) + 2, 1, 1, PAL.stone); }
+  }
+  // calçadas/asfalto na superfície
+  R(0, gy - 2, VW, 2, PAL.walk);
+  R(sx(-470), gy - 3, 96, 3, PAL.road); // Rua 25 de Março
+  R(sx(SIDE.aveX0), gy - 3, SIDE.aveX1 - SIDE.aveX0, 3, PAL.road);
+  for (let X = SIDE.aveX0 + 4; X < SIDE.aveX1; X += 14) R(sx(X), gy - 3, 6, 1, PAL.roadLine);
+
+  // CASA (corte tipo casa de boneca)
+  const hx0 = sx(SIDE.houseX0), hx1 = sx(SIDE.houseX1), hh = 46;
+  R(hx0, gy - hh, hx1 - hx0, hh, PAL.wallIn);
+  R(hx0, gy - hh, 3, hh, PAL.wall); R(hx1 - 3, gy - hh, 3, hh, PAL.wall); R(hx0, gy - hh, hx1 - hx0, 3, PAL.wall);
+  R(sx(-220), gy - hh, 3, hh, PAL.wall); // parede interna
+  for (let i = 0; i < 12; i++) R(hx0 - 6 + i * 2, gy - hh - 4 - i, hx1 - hx0 + 12 - i * 4, 1, i % 3 ? PAL.roof : PAL.roofDark); // telhado
+  R(hx0, gy - 20, 3, 20, '#6b4a2a'); // porta da frente
+  // loja (cômodo da frente): balcão + rolos de grama
+  R(sx(-340), gy - 9, 40, 9, PAL.wall); R(sx(-340), gy - 10, 40, 1, PAL.grey);
+  for (let i = 0; i < 3; i++) { R(sx(-290 + i * 12), gy - 8, 9, 8, PAL.uniform); R(sx(-288 + i * 12), gy - 6, 5, 4, PAL.uniformDark); }
+  R(sx(-330), gy - 34, 22, 14, PAL.win); // janela acesa
+  // cômodo dos fundos: sacos atrás da parede falsa
+  for (let i = 0; i < o.sacks; i++) { const c = i % 6, r = Math.floor(i / 6); sack(sx(-212 + c * 7), gy - 6 - r * 5); }
+  R(sx(-170), gy - hh + 3, 2, hh - 3, '#56607a'); // parede falsa
+  if (o.showFalseWall) label('PAREDE FALSA', sx(-214), gy - hh - 30, PAL.amber);
+  // placa da fachada
+  if (o.sign > 0) {
+    const k = o.sign; const w = 110, sxp = hx0 + 10, syp = gy - hh - 30 + Math.round((1 - k) * -20);
+    R(sxp + 20, syp + 16, 2, 14, PAL.grey); R(sxp + 88, syp + 16, 2, 14, PAL.grey);
+    box(sxp, syp, w, 17, '#7dff9a', '#1f6b3a'); TC('GRAMA SINTÉTICA', sxp + w / 2, syp + 5, '#d9ffe6', 1, '#0d3a1d');
+  }
+  // quintal + edícula
+  const ex0 = sx(SIDE.ediX0), ex1 = sx(SIDE.ediX1);
+  R(ex0, gy - 24, ex1 - ex0, 24, PAL.wallIn); R(ex0, gy - 24, ex1 - ex0, 3, PAL.wall); R(ex0, gy - 24, 3, 24, PAL.wall); R(ex1 - 3, gy - 24, 3, 24, PAL.wall);
+  R(ex0 - 3, gy - 27, ex1 - ex0 + 6, 3, PAL.roofDark);
+  // ar-condicionado / freezer da edícula
+  R(ex0 + 6, gy - 12, 8, 12, '#c9d1dc'); R(ex0 + 7, gy - 11, 6, 1, '#7d8794');
+
+  // BANCO
+  const bx0 = sx(SIDE.bankX0), bx1 = sx(SIDE.bankX1), bh = 84;
+  R(bx0, gy - bh, bx1 - bx0, bh, PAL.bankIn);
+  R(bx0, gy - bh, bx1 - bx0, 4, PAL.bankWall); R(bx0, gy - bh, 4, bh, PAL.bankWall); R(bx1 - 4, gy - bh, 4, bh, PAL.bankWall);
+  for (let f = 1; f < 3; f++) R(bx0, gy - f * 28, bx1 - bx0, 3, PAL.bankDark);
+  for (let i = 0; i < 9; i++) for (let f = 1; f < 3; f++) R(bx0 + 140 + i * 18, gy - f * 28 - 20, 8, 12, hash(i, f) > .55 ? PAL.win : PAL.winOff);
+  for (let i = 0; i < 4; i++) R(bx0 + 8 + i * 9, gy - bh + 6, 4, bh - 6, PAL.bankWall); // colunas
+  R(bx0 - 4, gy - bh - 6, 50, 6, PAL.bankWall); for (let i = 0; i < 6; i++) R(bx0 - 2 + i * 4, gy - bh - 6 - i, 46 - i * 8, 1, PAL.bankWall);
+  T('BANCO CENTRAL', bx0 + 140, gy - bh + 8, '#1c2233', 1, null);
+  // caixa-forte (térreo, em corte)
+  const vx0 = sx(SIDE.vaultX0), vx1 = sx(SIDE.vaultX1);
+  R(vx0, gy - 26, vx1 - vx0, 26, o.vaultLit ? '#5b4a26' : '#2a2f3c');
+  R(vx0, gy - 26, vx1 - vx0, 2, PAL.amber); R(vx0, gy - 26, 2, 26, PAL.amber); R(vx1 - 2, gy - 26, 2, 26, PAL.amber);
+  for (let i = 0; i < 10; i++) for (let j = 0; j < 3; j++) { const xx = vx0 + 6 + i * 12; if (xx > vx1 - 10) continue; R(xx, gy - 6 - j * 6, 9, 5, i < 6 ? PAL.money : '#6c7486'); R(xx + 3, gy - 6 - j * 6, 2, 5, i < 6 ? PAL.amber : '#525a6a'); }
+  T('CAIXA-FORTE', vx0 + 8, gy - 22, PAL.amber, 1, null);
+  // laje de concreto
+  R(sx(SIDE.vaultX0 - 6), gy, (SIDE.vaultX1 - SIDE.vaultX0) + 12, SIDE.slabB, PAL.concrete);
+  for (let X = SIDE.vaultX0 - 6; X < SIDE.vaultX1 + 6; X += 4) for (let Y = 0; Y < SIDE.slabB; Y += 4) if ((X + Y) % 8 === 0) R(sx(X), sy(Y), 2, 2, PAL.concreteDark);
+
+  // ESGOTO
+  if (o.sewer > 0) { const px = sx(SIDE.sewerX), py = sy(42); R(px - 7, py - 5, 14, 10, PAL.pipe); R(px - 5, py - 7, 10, 14, PAL.pipe); R(px - 4, py - 3, 8, 6, PAL.pipeDark); R(px - 3, py - 4, 6, 8, PAL.pipeDark); }
+
+  // TÚNEL
+  if (o.shaft > 0) { const sh = Math.round(44 * o.shaft); R(sx(0), gy, 10, sh, PAL.tunnel); for (let Y = 2; Y < sh; Y += 4) { R(sx(0), sy(Y), 1, 1, PAL.plank); R(sx(9), sy(Y), 1, 1, PAL.plank); } }
+  const len = o.len * M; // px
+  if (len > 0) {
+    for (let X = 0; X < len; X++) { const top = tunTop(X); R(sx(X), sy(top), 1, 14, PAL.tunnel); }
+    for (let X = 4; X < len - 2; X += 10) { const top = tunTop(X); R(sx(X), sy(top), 2, 14, PAL.plank); R(sx(X - 4), sy(top), 10, 2, PAL.plankDark); R(sx(X - 4), sy(top + 12), 10, 2, PAL.plankDark); }
+    if (o.lights > 0) for (let X = 20; X < len; X += 42) { const on = clamp(o.lights * 600 / 42 - X / 42); if (on <= 0) continue; const top = tunTop(X); R(sx(X), sy(top + 2), 2, 2, PAL.lamp); b.save(); b.globalAlpha = .18 * on; R(sx(X) - 6, sy(top + 2), 14, 12, PAL.lamp); b.restore(); }
+  }
+  if (o.riser > 0) { const top = lerp(22, SIDE.slabB, o.riser); R(sx(SIDE.endX - 7), sy(top), 14, 22 - top + 1, PAL.tunnel); }
+  if (o.cut > 0) { const h = Math.round(SIDE.slabB * o.cut); R(sx(SIDE.endX - 6), sy(SIDE.slabB - h), 12, h, PAL.tunnel); }
+  if (o.breakK > 0) { b.save(); b.globalAlpha = .55 * o.breakK; for (let i = 0; i < 26; i++) R(sx(SIDE.endX - 6 - i * .3), sy(i), 12 + i * .6, 1, '#ffe7a8'); b.restore(); }
+}
+
+/* carros na vista lateral */
+function sideCar(X, color, flip) { const x = sx(X), y = sy(0) - 9; R(x, y + 3, 22, 5, color); R(x + 5, y, 11, 4, color); R(x + 6, y + 1, 4, 2, '#9fd3ff'); R(x + 11, y + 1, 4, 2, '#9fd3ff'); R(x + 3, y + 7, 4, 3, '#111'); R(x + 15, y + 7, 4, 3, '#111'); R(flip ? x : x + 20, y + 4, 2, 2, PAL.win); }
+function trafficSide(t, shake) {
+  const span = SIDE.aveX1 - SIDE.aveX0 + 60;
+  [[0, PAL.car1, 70], [35, PAL.car2, 55], [80, PAL.car3, 85]].forEach(([off, c, v], i) => {
+    const X = SIDE.aveX0 - 30 + ((t * v + off * 3) % span); if (X > SIDE.aveX0 - 24 && X < SIDE.aveX1) sideCar(X, c, i % 2);
+  });
+}
+function truck(X) { const x = sx(X), y = sy(0) - 16; R(x, y + 6, 40, 8, PAL.truck); R(x + 28, y, 12, 8, PAL.truck); R(x + 30, y + 1, 7, 4, '#9fd3ff'); R(x + 2, y + 2, 24, 4, PAL.sack); R(x + 4, y + 13, 6, 4, '#111'); R(x + 28, y + 13, 6, 4, '#111'); }
+
+/* =====================================================================
+   VISTA DE CIMA (mapa da cidade e interior do cofre)
+   ===================================================================== */
+function drawCity(t, o) {
+  R(0, 0, BW, BH, '#1d2230');
+  // lotes / quarteirões
+  const blocks = [[0, 56, 60, 130], [76, 56, 174, 130], [282, 56, 158, 130], [456, 56, 24, 130], [0, 0, 480, 40], [0, 202, 480, 68]];
+  for (const [x, y, w, h] of blocks) { R(x, y, w, h, '#2b3242'); }
+  // prédios genéricos
+  for (let i = 0; i < 60; i++) {
+    const x = Math.floor(hash(i, 1) * 30) * 16, y = Math.floor(hash(i, 2) * 17) * 16; const w = 12 + Math.floor(hash(i, 3) * 2) * 8, h = 10 + Math.floor(hash(i, 4) * 2) * 8;
+    if (x < 290 && x + w > 276 && y < 190) continue; if (x + w > 60 && x < 76) continue; if (y + h > 40 && y < 56) continue; if (y + h > 186 && y < 202) continue; if (x + w > 250 && x < 282) continue;
+    if (x + w > 70 && x < 178 && y + h > 100 && y < 140) continue; if (x + w > 284 && x < 410 && y + h > 58 && y < 182) continue; if (x + w > 440 && x < 456) continue;
+    const c = ['#3a4256', '#45506a', '#55405a', '#4a3f3a'][i % 4]; R(x, y, w, h, c); R(x, y, w, 2, '#5a6584'); R(x + 2, y + 4, 2, 2, hash(i, 7) > .5 ? PAL.win : '#262c3c');
+  }
+  // árvores
+  for (let i = 0; i < 18; i++) { const x = hash(i, 11) * 470, y = 60 + hash(i, 12) * 120; if ((x > 60 && x < 76) || (x > 246 && x < 286) || (x > 70 && x < 180 && y > 100 && y < 140) || (x > 284 && x < 412)) continue; R(x, y, 6, 6, PAL.tree); R(x + 1, y + 1, 3, 3, '#3f8a4c'); }
+  // ruas
+  R(0, 40, BW, 16, PAL.road); R(0, 186, BW, 16, PAL.road); R(60, 0, 16, BH, PAL.road); R(250, 0, 32, BH, PAL.road); R(440, 0, 16, BH, PAL.road);
+  for (let y = 0; y < BH; y += 12) R(265, y, 2, 6, PAL.roadLine);
+  for (let x = 0; x < BW; x += 12) { R(x, 47, 6, 1, '#555b66'); R(x, 193, 6, 1, '#555b66'); }
+  T('R. HERÁCLITO GRAÇA', 300, 45, PAL.grey, 1, null);
+  b.save(); b.translate(70, 150); b.rotate(-Math.PI / 2); b.restore();
+  // nomes verticais (letra por letra)
+  const vname = (s, x, y0) => { let y = y0; for (const ch of norm(s)) { if (ch !== ' ') T(ch, x, y, PAL.grey, 1, null); y += 9; } };
+  vname('RUA 25 DE MARÇO', 66, 60); vname('AV. DOM MANUEL', 254, 60);
+  // carros
+  [[0, PAL.car1], [90, PAL.car2], [170, PAL.car3]].forEach(([o2, c], i) => { const y = ((t * 40 + o2) % 300) - 20; const lane = i % 2 ? 270 : 255; R(lane, i % 2 ? 270 - y : y, 8, 13, c); R(lane + 1, (i % 2 ? 270 - y : y) + 2, 6, 3, '#9fd3ff'); });
+  { const x = ((t * 50) % 540) - 30; R(x, 49, 13, 6, PAL.car2); R(x + 8, 50, 3, 4, '#9fd3ff'); }
+  // banco
+  const bk = o.bank;
+  R(290, 64, 112, 114, '#8d95a5'); R(292, 66, 108, 110, '#b8bfcc'); for (let i = 0; i < 6; i++) R(300 + i * 16, 74, 10, 96, '#a7afbd');
+  R(296, 80, 4, 80, '#d5dbe4'); // colunata frontal
+  if (o.vault > 0) { b.save(); b.globalAlpha = o.vault; R(298, 108, 36, 26, '#3a2f16'); for (let i = 0; i < 36; i += 2) { R(298 + i, 108, 1, 1, PAL.amber); R(298 + i, 133, 1, 1, PAL.amber); } for (let j = 0; j < 26; j += 2) { R(298, 108 + j, 1, 1, PAL.amber); R(333, 108 + j, 1, 1, PAL.amber); } b.restore(); }
+  // casa alugada
+  R(80, 112, 70, 18, PAL.roof); for (let i = 0; i < 70; i += 6) R(80 + i, 112, 1, 18, PAL.roofDark); R(80, 120, 70, 2, PAL.roofDark);
+  R(154, 114, 16, 14, '#4a5266'); R(156, 116, 12, 10, '#363d4f'); // edícula
+  if (o.house > 0) { b.save(); b.globalAlpha = o.house; for (let i = 0; i < 92; i += 2) { R(78 + i, 110, 1, 1, PAL.red); R(78 + i, 131, 1, 1, PAL.red); } for (let j = 0; j < 22; j += 2) { R(78, 110 + j, 1, 1, PAL.red); R(171, 110 + j, 1, 1, PAL.red); } b.restore(); }
+  // rota do túnel
+  if (o.route > 0) { const x1 = lerp(162, 316, o.route); for (let x = 162; x < x1; x += 4) { R(x, 120, 2, 2, PAL.red); } R(x1 - 1, 119, 4, 4, PAL.red); }
+  if (bk > 0) { arrowDown(316, 92 - 4, PAL.amber, t); }
+}
+
+function drawVault(t, k, o = {}) {
+  R(0, 0, BW, BH, '#0c0f16');
+  const rx = 20, ry = 40, rw = 340, rh = 168;
+  for (let x = rx; x < rx + rw; x += 10) for (let y = ry; y < ry + rh; y += 10) R(x, y, 10, 10, ((x + y) / 10) % 2 ? '#262c38' : '#232833');
+  R(rx - 4, ry - 4, rw + 8, 4, '#59606e'); R(rx - 4, ry + rh, rw + 8, 4, '#59606e'); R(rx - 4, ry - 4, 4, rh + 8, '#59606e'); R(rx + rw, ry - 4, 4, rh + 8, '#59606e');
+  // porta (abre no fecho)
+  const door = o.door || 0; R(rx + 150, ry - 4, 40, 4, door > 0 ? '#0c0f16' : '#8d95a5'); if (door > 0) R(rx + 150 - 30 * door, ry - 10, 30, 6, '#8d95a5');
+  // notas novas (seriadas) — intocadas
+  TC('NOVAS - SERIADAS', rx + 62, ry + 6, PAL.grey, 1, null);
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 4; j++) { const x = rx + 22 + i * 28, y = ry + 22 + j * 30; R(x, y, 22, 18, '#5d6678'); R(x, y + 15, 22, 3, '#454d5c'); R(x + 8, y + 5, 6, 6, '#2b303b'); R(x + 9, y + 2, 4, 4, '#2b303b'); R(x + 10, y + 3, 2, 2, '#5d6678'); }
+  // notas usadas — alvo
+  TC('USADAS - R$ 50', rx + 250, ry + 6, PAL.amber, 1, null);
+  const N = 20, left = Math.round(N * (1 - k));
+  let n = 0; for (let j = 0; j < 4; j++) for (let i = 0; i < 5; i++) { if (n++ >= left) continue; const x = rx + 190 + i * 28, y = ry + 22 + j * 30; R(x, y, 22, 18, PAL.money); R(x, y + 15, 22, 3, PAL.moneyDark); R(x + 9, y, 4, 18, PAL.amber); }
+  // sensor de presença no teto (cone varrendo)
+  const sxp = rx + 150, syp = ry + 8, a = Math.PI / 2 + Math.sin(t * 1.3) * .7;
+  b.save(); b.globalAlpha = .22; b.fillStyle = PAL.red; b.beginPath(); b.moveTo(sxp, syp); b.lineTo(sxp + Math.cos(a - .32) * 120, syp + Math.sin(a - .32) * 120); b.lineTo(sxp + Math.cos(a + .32) * 120, syp + Math.sin(a + .32) * 120); b.closePath(); b.fill(); b.restore();
+  R(sxp - 3, syp - 3, 6, 5, '#d0d4dc'); R(sxp - 1, syp, 2, 2, PAL.red);
+  // buraco no piso
+  const hx = rx + 300, hy = ry + rh - 14; R(hx - 10, hy - 5, 20, 10, '#030304'); R(hx - 12, hy - 3, 24, 6, '#030304'); for (let i = -12; i < 12; i += 2) { R(hx + i, hy - 6, 1, 1, PAL.red); R(hx + i, hy + 5, 1, 1, PAL.red); }
+  return { rx, ry, rw, rh, hx, hy };
+}
+
+/* =====================================================================
+   CENAS
+   ===================================================================== */
+const CH = { gancho: 'FASE 1: O ALVO', terreno: 'FASE 2: O TERRENO', fachada: 'FASE 3: O DISFARCE', tunel: 'FASE 4: O TÚNEL', esgoto: 'FASE 5: O IMPREVISTO', laje: 'FASE 6: A LAJE', cofre: 'FASE 7: O COFRE', fecho: 'FASE 8: A FUGA' };
+function clockStr(t) {
+  const id = sceneAt(t).s.id;
+  if (id === 'fachada' || id === 'tunel' || id === 'esgoto') return ['MAI-AGO 2005', 'ESCAVAÇÃO'];
+  if (id === 'cofre') { const k = eio(P('cofre', t)); const m = Math.round(lerp(22 * 60, 30 * 60, k)); const hh = Math.floor(m / 60) % 24, mm = m % 60; return [hh < 22 ? 'SÁB 06.08.2005' : 'SEX 05.08.2005', `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`]; }
+  if (id === 'fecho') return ['SEG 08.08.2005', 'MANHÃ'];
+  return ['SEX 05.08.2005', '21:00'];
+}
+function worldOf(id) { return ({ terreno: 'city', cofre: 'vault', fecho: 'vault' })[id] || 'side'; }
+
+function sceneGancho(t) {
+  const g = P('gancho', t); const k = eio(seg(g, .15, .55));
+  cam = { x: lerp(560, 500, k), y: lerp(-60, 12, k) };
+  world(2, () => {
+    drawSide(t, { sacks: 18, sign: 1, shaft: 1, len: 75, lights: 1, riser: 1, sewer: 1 });
+    trafficSide(t);
+    const y = sy(22) - 9;
+    spr('crouch' + (Math.floor(t * 3) % 2), sx(SIDE.endX - 34), y, CREW[0]);
+    spr('crouch' + (Math.floor(t * 3 + 1) % 2), sx(SIDE.endX - 22), y, CREW[1]);
+    spr('look', sx(SIDE.endX - 9), sy(SIDE.slabB) + 1, CREW[2]);
+  });
+  if (g > .3) label('1,10 M DE CONCRETO', zx(SIDE.endX + 12), zy(SIDE.slabB) - 2, PAL.red, 'ENTRE ELES E O DINHEIRO');
+  if (g > .45) { const mk = eio(seg(g, .45, .95)); box(BW - 156, 36, 150, 24, PAL.amber); T('NO COFRE:', BW - 150, 40, PAL.grey, 1, null); T('R$ ' + Math.round(164700000 * mk).toLocaleString('pt-BR'), BW - 150, 50, PAL.amber, 1, null); }
+}
+function sceneTerreno(t) {
+  const te = P('terreno', t);
+  drawCity(t, { bank: seg(te, .05, .2), vault: seg(te, .05, .2), house: seg(te, .5, .62), route: 0 });
+  if (te > .08) label('BANCO CENTRAL', 340, 66, PAL.white, 'AV. DOM MANUEL');
+  if (te > .5) { arrowDown(114, 96, PAL.red, t); label('CASA ALUGADA', 82, 138, PAL.red, 'RUA 25 DE MARÇO'); }
+  if (te > .72) { const k = eio(seg(te, .72, .95)); const x1 = lerp(114, 316, k); for (let x = 114; x < x1; x += 6) R(x, 100, 3, 1, PAL.amber); R(114, 97, 1, 7, PAL.amber); if (k >= 1) R(316, 97, 1, 7, PAL.amber); if (k > .6) TC('≈ 100 M', 215, 90, PAL.amber); }
+}
+function sceneFachada(t) {
+  const f = P('fachada', t);
+  cam = { x: lerp(-372, -175, eio(seg(f, .35, .85))), y: -22 };
+  world(2, () => {
+    drawSide(t, { sacks: 6 + Math.floor(f * 14), sign: eout(seg(f, .05, .25)), shaft: 0, len: 0 });
+    truck(-455);
+    for (let i = 0; i < 3; i++) {
+      const ph = (t * .16 + i / 3) % 1; const go = ph < .5; const k = go ? ph * 2 : (ph - .5) * 2;
+      const X = go ? lerp(-60, -430, k) : lerp(-430, -60, k);
+      const fr = Math.floor(t * 8 + i) % 2;
+      spr(go ? (fr ? 'carry0' : 'walk1') : (fr ? 'walk0' : 'walk1'), sx(X), sy(0) - 12, CREW[i], go);
+      if (go) sack(sx(X) - 3, sy(0) - 14);
+    }
+    if (f > .08 && f < .55) { const nx = lerp(-540, -360, seg(f, .08, .55)); spr(Math.floor(t * 8) % 2 ? 'walk0' : 'walk1', sx(nx), sy(0) - 12, { h: '#777', s: '#e0ac69' }, false, '#4f7ac9', '#3a5c99'); }
+  });
+  if (f > .15 && f < .55) { const nx = lerp(-540, -360, seg(f, .08, .55)); TC('BOM DIA!', zx(nx) + 8, zy(0) - 40, PAL.white); }
+  if (f > .25) label('EMPRESA DE FACHADA', 8, 36, '#7dff9a', 'REGISTRADA EM NOME FALSO');
+  if (f > .7) label('PAREDE FALSA', zx(-200), zy(-46) + 8, PAL.amber, 'ESCONDE OS SACOS DE TERRA');
+}
+function sceneTunel(t) {
+  const tu = P('tunel', t); const len = 60 * eio(seg(tu, .18, .95));
+  const front = len * M; const fk = eio(seg(tu, 0, .2));
+  cam = { x: lerp(-175, front - 80, fk), y: lerp(-22, 27, fk) };
+  world(2, () => {
+    drawSide(t, { sacks: 20, sign: 1, shaft: eout(seg(tu, .02, .18)), len, lights: seg(tu, .5, 1) });
+    trafficSide(t);
+    if (len > .5) {
+      const top = tunTop(front); spr('crouch' + (Math.floor(t * 6) % 2), sx(front - 9), sy(top + 5), CREW[0]);
+      const a = Math.floor(t * 6) % 2; R(sx(front - 1), sy(top + 8 + a), 4, 1, PAL.grey); R(sx(front + 3), sy(top + 7 + a), 2, 3, '#c9d1dc');
+      for (let i = 0; i < 4; i++) { const ph = (t * 3 + i * .25) % 1; R(sx(front - 3 - ph * 10), sy(top + 12 - Math.sin(ph * Math.PI) * 5), 1, 1, PAL.soil1); }
+      const ph = (t * .35) % 1; const bxp = ph < .5 ? lerp(front - 16, 12, ph * 2) : lerp(12, front - 16, (ph - .5) * 2);
+      R(sx(bxp), sy(tunTop(bxp) + 9), 7, 4, '#3d6fb0'); if (ph < .5) R(sx(bxp) + 1, sy(tunTop(bxp) + 8), 5, 1, PAL.soil1);
+      for (let X = 12; X < bxp; X += 2) R(sx(X), sy(tunTop(X) + 11), 1, 1, '#c9b48a');
+      spr('walk0', sx(-12), sy(0) - 12, CREW[1]); R(sx(2), sy(0) - 8, 6, 1, PAL.grey); R(sx(4), sy(0) - 8, 1, 8, '#c9b48a');
+    }
+    if (tu > .1) { R(sx(-8), sy(0), 1, 30, PAL.amber); R(sx(-10), sy(0), 5, 1, PAL.amber); R(sx(-10), sy(30), 5, 1, PAL.amber); }
+  });
+  if (tu > .1 && tu < .45) T('3 M', zx(-8) - 26, zy(15) - 3, PAL.amber);
+  bar(BW - 128, 198, 120, len / 75.4, PAL.red, `TÚNEL ${len.toFixed(1).replace('.', ',')} / 75,4 M`);
+  if (tu > .55) label('≈ 900 TÁBUAS + LUZ', 8, 36, PAL.amber, 'VENTILAÇÃO E AR-CONDICIONADO');
+}
+function sceneEsgoto(t) {
+  const es = P('esgoto', t); const len = lerp(60, 75, eio(seg(es, .42, .9)));
+  const front = len * M; cam = { x: front - 80, y: 27 };
+  const shake = es > .5 && es < .9; if (shake) { cam.x += Math.round(Math.sin(t * 50)); cam.y += Math.round(Math.cos(t * 43)); }
+  const top = tunTop(front);
+  world(2, () => {
+    drawSide(t, { sacks: 20, sign: 1, shaft: 1, len, lights: 1, sewer: eout(seg(es, .05, .15)) });
+    trafficSide(t);
+    spr('crouch' + (Math.floor(t * 6) % 2), sx(front - 9), sy(top + 5), CREW[0]);
+    spr('crouch0', sx(front - 26), sy(tunTop(front - 26) + 5), CREW[1]);
+    if (es > .1 && es < .4) for (let i = 0; i < 18; i++) { const ph = (t * 4 + i / 18) % 1; R(sx(SIDE.sewerX) - 3 - ph * 18 + hash(i, 1) * 4, sy(36) - Math.sin(ph * Math.PI) * 10 + 2, 1, 1, PAL.water); }
+  });
+  if (es > .1 && es < .4) { bang(zx(front - 5), zy(top + 5) - 2, PAL.red, t); bang(zx(front - 22), zy(tunTop(front - 26) + 5) - 2, PAL.red, t + .3); }
+  if (es > .12) label('ESGOTO', zx(SIDE.sewerX) - 140, zy(48), '#5ec8e0', 'NÃO ESTAVA NA PLANTA');
+  if (es > .45) label('TÚNEL SOBE ≈ 70 CM', 8, 36, PAL.amber, 'COLADO NO ASFALTO');
+  bar(BW - 128, 198, 120, len / 75.4, PAL.red, `TÚNEL ${len.toFixed(1).replace('.', ',')} / 75,4 M`);
+}
+function sceneLaje(t) {
+  const la = P('laje', t); const k = eio(seg(la, 0, .25));
+  cam = { x: lerp(SIDE.endX - 80, SIDE.endX - 20, k), y: lerp(27, 4, k) };
+  const cut = eio(seg(la, .3, .85)), brk = eout(seg(la, .86, 1));
+  world(2, () => {
+    drawSide(t, { sacks: 20, sign: 1, shaft: 1, len: 75, lights: 1, sewer: 1, riser: eio(seg(la, 0, .2)), cut, breakK: brk, vaultLit: brk > 0 });
+    trafficSide(t);
+    spr('look', sx(SIDE.endX - 9), sy(22) - 8, CREW[2]);
+    spr('crouch0', sx(SIDE.endX - 28), sy(22) + 5, CREW[0]);
+    if (la > .28 && la < .87) {
+      const yy = sy(SIDE.slabB - SIDE.slabB * cut) - 2; const a = Math.floor(t * 20) % 2;
+      R(sx(SIDE.endX - 4), yy, 9, 9, '#c9d1dc'); R(sx(SIDE.endX - 3) + a, yy + 1, 7 - a, 7, '#8d95a5'); R(sx(SIDE.endX), yy + 4, 1, 1, '#333');
+      for (let i = 0; i < 10; i++) { const r = hash(Math.floor(t * 30), i); R(sx(SIDE.endX) + (r - .5) * 30, yy + 4 + hash(i, Math.floor(t * 30)) * 14, 1, 1, r > .5 ? PAL.amber : '#fff3c4'); }
+    }
+  });
+  bar(BW - 128, 198, 120, cut, PAL.amber, `CORTE NA LAJE ${Math.round(cut * 100)}%`);
+  if (la > .2) label('LAJE: 1,10 M', 8, 36, PAL.white, 'SERRA COM DISCO DE DIAMANTE');
+  if (brk > 0 && brk < 1) { b.save(); b.globalAlpha = (1 - brk) * .7; R(0, 0, BW, BH, '#fff1d0'); b.restore(); }
+}
+function sceneCofre(t) {
+  const p = P('cofre', t); const k = eio(seg(p, .08, .92));
+  const v = drawVault(t, k);
+  // 3 figuras: buraco -> rente à parede de baixo -> parede da direita -> pilhas -> volta
+  const path = [[v.hx, v.hy - 6], [v.rx + v.rw - 12, v.ry + v.rh - 12], [v.rx + v.rw - 12, v.ry + 70], [v.rx + 262, v.ry + 70]];
+  const L = []; let tot = 0; for (let i = 1; i < path.length; i++) { const d = Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]); L.push(d); tot += d; }
+  const at = s => { let d = s * tot; for (let i = 0; i < L.length; i++) { if (d <= L[i]) { const q = d / L[i]; return [lerp(path[i][0], path[i + 1][0], q), lerp(path[i][1], path[i + 1][1], q)]; } d -= L[i]; } return path[path.length - 1]; };
+  for (let i = 0; i < 3; i++) {
+    const ph = (t * .22 + i / 3) % 1; const back = ph > .5; const s = back ? 1 - (ph - .5) * 2 : ph * 2; const [x, y] = at(s);
+    if (k < .98 || !back) { spr(Math.floor(t * 8 + i) % 2 ? 'top0' : 'top1', x - 8, y - 8, CREW[i + 1], false, PAL.uniform, PAL.uniformDark, 2); if (back) bundle2(x - 6, y - 14); }
+  }
+  label('RENTE ÀS PAREDES', v.rx + 160, v.ry + v.rh - 22, PAL.red, 'FORA DO SENSOR');
+  // painel lateral estilo jogo
+  box(368, 40, 106, 92, PAL.amber);
+  T('LEVADO', 374, 46, PAL.grey, 1, null); T('R$ ' + (164.7 * k).toFixed(1).replace('.', ',') + ' MI', 374, 56, PAL.amber, 1, null);
+  T('PESO', 374, 72, PAL.grey, 1, null); T((3.5 * k).toFixed(1).replace('.', ',') + ' T', 374, 82, PAL.amber, 1, null);
+  T('NOTAS', 374, 98, PAL.grey, 1, null); T('USADAS', 374, 108, PAL.white, 1, null); T('SEM SÉRIE', 374, 118, PAL.white, 1, null);
+}
+function sceneFecho(t) {
+  const fe = P('fecho', t);
+  const v = drawVault(t, 1, { door: eout(seg(fe, .05, .15)) });
+  // funcionário entra e vê o cofre vazio
+  const y = lerp(v.ry - 10, v.ry + 30, eio(seg(fe, .1, .25)));
+  spr(Math.floor(t * 8) % 2 ? 'top0' : 'top1', v.rx + 162, y, { h: '#333', s: '#c68642' }, false, '#d0d4dc', '#9aa3b2', 2);
+  if (fe > .25) bang(v.rx + 170, y - 3, PAL.red, t);
+  if (fe > .25) label('COFRE VAZIO', v.rx + 190, v.ry + 30, PAL.red, 'DESCOBERTA DO FURTO');
+  if (fe > .42) { const k = eout(seg(fe, .42, .52)); box(60, 90 - (1 - k) * 30, 360, 48, PAL.red); TC('PRÓXIMA FASE:', 240, 98 - (1 - k) * 30, PAL.grey, 1, null); TC('A FUGA', 240, 112 - (1 - k) * 30, PAL.red, 2); }
+}
+
+/* ---------- HUD e diálogo ---------- */
+function hud(t) {
+  const { s } = sceneAt(t);
+  box(6, 6, textW(CH[s.id]) + 50, 25, PAL.white); R(10, 10, 4, 4, PAL.red); T('CASO 01', 18, 9, PAL.white, 1, null); T(CH[s.id], 10, 20, PAL.amber, 1, null);
+  const [d, h] = clockStr(t); const w = Math.max(textW(d), textW(h)) + 12; box(BW - 6 - w, 6, w, 25, PAL.white);
+  T(d, BW - w, 9, PAL.grey, 1, null); T(h, BW - w, 20, PAL.amber, 1, null);
+}
+function wrap(s, max) { const out = []; let line = ''; for (const w of norm(s).split(' ')) { if ((line + ' ' + w).trim().length > max) { out.push(line); line = w; } else line = (line + ' ' + w).trim(); } if (line) out.push(line); return out; }
+function dialog(t) {
+  let cue = null; for (const s of TL.scenes) for (const c of s.cues) if (t >= c.start - .05 && t < c.end + .25) cue = c;
+  if (!cue) return;
+  const lines = wrap(cue.text, 74); const total = lines.join('').length;
+  const shown = Math.floor(total * clamp((t - cue.start) / Math.max(.4, (cue.end - cue.start) * .75)));
+  box(6, 216, BW - 12, 48, PAL.white); box(14, 210, 58, 11, PAL.amber, '#0b0d14'); T('NARRADOR', 19, 212, PAL.amber, 1, null);
+  let used = 0; lines.forEach((ln, i) => { const part = ln.slice(0, clamp(shown - used, 0, ln.length)); used += ln.length; T(part, 14, 228 + i * 12, PAL.white, 1, '#000'); });
+  if (shown >= total && Math.floor(t * 3) % 2) { R(BW - 20, 254, 5, 1, PAL.white); R(BW - 19, 255, 3, 1, PAL.white); R(BW - 18, 256, 1, 1, PAL.white); }
+}
+
+/* transição em blocos (dissolve pixelado) */
+function dissolve(k) { if (k >= 1) return; for (let y = 0; y < BH; y += 10) for (let x = 0; x < BW; x += 10) if (hash(x / 10, y / 10 + 99) > k) R(x, y, 10, 10, '#000'); }
+
+function drawScene(id, t) {
+  ({ gancho: sceneGancho, terreno: sceneTerreno, fachada: sceneFachada, tunel: sceneTunel, esgoto: sceneEsgoto, laje: sceneLaje, cofre: sceneCofre, fecho: sceneFecho })[id](t);
+}
+
+function endCard(t, k) {
+  if (k <= 0) return;
+  b.save(); b.globalAlpha = k; R(0, 0, BW, BH, '#06070b');
+  // pino pixelado
+  const px = 240, py = 60; const pin = ['..####..', '.######.', '###..###', '###..###', '.######.', '..####..', '...##...', '....#...'];
+  for (let r = 0; r < pin.length; r++) for (let c = 0; c < 8; c++) if (pin[r][c] === '#') R(px - 16 + c * 4, py + r * 4, 4, 4, PAL.red);
+  TC('MAPA DO CRIME', 240, 104, PAL.white, 3, '#5a1517');
+  TC('O CRIME VISTO DE CIMA', 240, 136, PAL.red, 1, null);
+  TC('CASO 01: O FURTO DO BANCO CENTRAL', 240, 162, PAL.grey, 1, null);
+  TC('FASE 2: A FUGA - EM BREVE', 240, 176, PAL.amber, 1, null);
+  TC('FONTES: ESTADÃO "OS TOUPEIRAS" (2015), PF, JUSTIÇA FEDERAL-CE', 240, 236, '#6b7280', 1, null);
+  TC('REPRESENTAÇÃO ILUSTRATIVA. PERSONAGENS GENÉRICOS.', 240, 248, '#6b7280', 1, null);
+  b.restore();
+}
+
+window.renderFrame = function (t) {
+  const { s, local } = sceneAt(t);
+  drawScene(s.id, t);
+  const prev = TL.scenes[TL.scenes.indexOf(s) - 1];
+  if (prev && worldOf(prev.id) !== worldOf(s.id)) dissolve(clamp(local / .45));
+  // abertura
+  const intro = 1 - seg(t, 1.6, 2.1);
+  if (intro > 0) {
+    if (intro < 1) dissolve(1 - intro); else R(0, 0, BW, BH, '#000');
+    if (intro >= 1) { const s1 = '05.08.2005 - 21:00'; const n = Math.floor(seg(t, .1, .9) * s1.length); TC(s1.slice(0, n).padEnd(s1.length, ' '), 240, 110, PAL.white, 2); if (t > .9) TC('FORTALEZA - CE', 240, 136, PAL.red, 1); }
+  }
+  const endK = seg(t, TL.total - 3.6, TL.total - 3.1);
+  if (intro < 1 && endK < 1) { hud(t); dialog(t); }
+  endCard(t, endK);
+  // amplia 4x sem suavização + scanlines leves + vinheta
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(buf, 0, 0, W, H);
+  ctx.fillStyle = 'rgba(0,0,0,.10)'; for (let y = 0; y < H; y += 4) ctx.fillRect(0, y + 3, W, 1);
+  const v = ctx.createRadialGradient(W / 2, H / 2, H * .45, W / 2, H / 2, H * .95); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)'); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+};
+
+window.renderThumb = function () {
+  cam = { x: SIDE.endX - 50, y: 0 };
+  world(2, () => {
+    drawSide(3, { sacks: 20, sign: 1, shaft: 1, len: 75, lights: 1, sewer: 1, riser: 1, cut: .6 });
+    trafficSide(3);
+    spr('look', sx(SIDE.endX - 9), sy(22) - 8, CREW[2]); spr('crouch0', sx(SIDE.endX - 28), sy(22) + 5, CREW[0]); spr('crouch1', sx(SIDE.endX - 50), sy(22) + 5, CREW[1]);
+  });
+  bang(zx(SIDE.endX - 5), zy(22) - 18, PAL.red, 0);
+  b.save(); b.globalAlpha = .85; R(0, 0, BW, 66, '#06070b'); b.restore();
+  T('75 METROS', 12, 10, PAL.white, 4, '#000'); T('ATÉ O COFRE', 12, 46, PAL.amber, 2, '#000');
+  box(290, 210, 184, 52, PAL.red); TC('R$ 164,7', 382, 216, PAL.red, 3, '#000'); TC('MILHÕES', 382, 244, PAL.white, 1, null);
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(buf, 0, 0, W, H);
+};
+</script>
+</body>
+</html>

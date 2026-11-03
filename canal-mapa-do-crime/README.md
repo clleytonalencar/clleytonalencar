@@ -4,6 +4,8 @@
 
 Inspiração de formato: o canal *Battle Analysis* (@battleanalysis79), que fez 1,8 milhão de views no primeiro mês narrando batalhas indianas com mapas e peças. Aqui aplicamos a mesma lógica a crimes brasileiros, para o público brasileiro.
 
+**Dois visuais em teste:** motion graphics de mapa (este documento) e **jogo 2D em pixel art com bonecos**, descrito em [`ANGULO-JOGO-2D.md`](ANGULO-JOGO-2D.md). Os dois pilotos usam a mesma narração para comparar lado a lado.
+
 ---
 
 ## 1. Posicionamento
@@ -164,6 +166,7 @@ Faça a leitura a cada 5 episódios e mude **uma** variável por vez.
 ```
 canal-mapa-do-crime/
 ├── README.md                      ← este documento (estrutura do canal)
+├── ANGULO-JOGO-2D.md              ← ângulo "jogo 2D" (pixel art, fases, Game Over)
 └── piloto-01-banco-central/
     ├── README.md                  ← roteiro, fontes e como renderizar
     ├── scenes.json                ← texto da narração por cena
@@ -171,5 +174,7 @@ canal-mapa-do-crime/
     ├── tools/tts.py               ← narração + timeline + legendas
     ├── tools/render.js            ← render quadro a quadro (Playwright → ffmpeg)
     ├── tools/audio.py             ← trilha sintetizada + mixagem final
-    └── entregas/                  ← vídeo final, thumbnail, avatar
+    ├── tools/audio_pixel.py       ← trilha chiptune da versão pixel
+    ├── versao-pixel/index.html    ← motor da versão jogo 2D (pixel art)
+    └── entregas/                  ← vídeos finais, thumbnails, avatar
 ```

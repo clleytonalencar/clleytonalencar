@@ -12,13 +12,16 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const BUILD = path.join(ROOT, 'build');
 const timeline = JSON.parse(fs.readFileSync(path.join(BUILD, 'timeline.json'), 'utf8'));
+// PAGE: página a renderizar (padrão index.html); TAG: sufixo dos arquivos gerados
+const PAGE = process.env.PAGE || 'index.html';
+const TAG = process.env.TAG ? '_' + process.env.TAG : '';
 
 (async () => {
   const [mode = 'preview', ...args] = process.argv.slice(2);
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
   await page.addInitScript(tl => { window.TIMELINE = tl; }, timeline);
-  await page.goto('file://' + path.join(ROOT, 'index.html'));
+  await page.goto('file://' + path.join(ROOT, PAGE));
   await page.evaluate(() => document.fonts.ready);
   await page.waitForFunction(() => typeof window.renderFrame === 'function');
 
@@ -26,19 +29,19 @@ const timeline = JSON.parse(fs.readFileSync(path.join(BUILD, 'timeline.json'), '
     fs.mkdirSync(path.join(BUILD, 'preview'), { recursive: true });
     for (const a of args) {
       await page.evaluate(t => window.renderFrame(t), parseFloat(a));
-      await page.screenshot({ path: path.join(BUILD, 'preview', `t${a}.png`) });
+      await page.screenshot({ path: path.join(BUILD, 'preview', `t${a}${TAG}.png`) });
     }
   } else if (mode === 'thumb') {
     await page.evaluate(() => window.renderThumb());
-    await page.screenshot({ path: path.join(BUILD, 'thumb_full.png') });
-    await new Promise((res, rej) => spawn('ffmpeg', ['-y', '-v', 'error', '-i', path.join(BUILD, 'thumb_full.png'), '-vf', 'scale=1280:720', '-q:v', '2', path.join(BUILD, 'thumbnail.jpg')], { stdio: 'inherit' }).on('exit', c => c ? rej(c) : res()));
+    await page.screenshot({ path: path.join(BUILD, `thumb_full${TAG}.png`) });
+    await new Promise((res, rej) => spawn('ffmpeg', ['-y', '-v', 'error', '-i', path.join(BUILD, `thumb_full${TAG}.png`), '-vf', 'scale=1280:720', '-q:v', '2', path.join(BUILD, `thumbnail${TAG}.jpg`)], { stdio: 'inherit' }).on('exit', c => c ? rej(c) : res()));
   } else if (mode === 'avatar') {
     await page.evaluate(() => window.renderAvatar());
     await page.screenshot({ path: path.join(BUILD, 'avatar.png'), clip: { x: 420, y: 0, width: 1080, height: 1080 } });
   } else if (mode === 'video') {
     const fps = parseInt(args[0] || '30', 10);
     const frames = Math.ceil(timeline.total * fps);
-    const out = path.join(BUILD, 'video_mudo.mp4');
+    const out = path.join(BUILD, `video_mudo${TAG}.mp4`);
     const ff = spawn('ffmpeg', ['-y', '-v', 'error', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-',
       '-c:v', 'libx264', '-preset', 'slow', '-crf', '23', '-pix_fmt', 'yuv420p', '-r', String(fps), out], { stdio: ['pipe', 'inherit', 'inherit'] });
     const t0 = Date.now();

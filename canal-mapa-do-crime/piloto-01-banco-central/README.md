@@ -6,6 +6,16 @@ Teaser de ~61 s em 1920×1080 / 30 fps, feito 100% em motion graphics 2D.
 - **Thumbnail:** `entregas/thumbnail.jpg` (1280×720)
 - **Avatar do canal:** `entregas/avatar.png`
 
+**Versão jogo 2D (pixel art, mesma narração):** `entregas/piloto-01-pixel.mp4` + `entregas/thumbnail-pixel.jpg`. Veja o conceito em `../ANGULO-JOGO-2D.md`. Para regerar:
+
+```bash
+PAGE=versao-pixel/index.html TAG=px node tools/render.js video 30
+```
+
+```bash
+python3 tools/audio_pixel.py
+```
+
 ## Roteiro
 
 | Tempo | Capítulo | Narração | Na tela |
