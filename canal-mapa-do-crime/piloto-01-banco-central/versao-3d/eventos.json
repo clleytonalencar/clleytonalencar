@@ -1,0 +1,14 @@
+[
+ {"tipo": "maquina", "t": 0.1, "n": 18},
+ {"tipo": "impacto", "t": 1.7, "vol": 0.9},
+ {"tipo": "impacto", "cena": "terreno", "p": 0},
+ {"tipo": "whoosh", "cena": "fachada", "p": 0, "antes": 0.35},
+ {"tipo": "whoosh", "cena": "tunel", "p": 0.05},
+ {"tipo": "impacto", "cena": "esgoto", "p": 0.1},
+ {"tipo": "serra", "cena": "laje", "p": 0.3, "ate": 0.85},
+ {"tipo": "estouro", "cena": "laje", "p": 0.86},
+ {"tipo": "whoosh", "cena": "cofre", "p": 0, "antes": 0.35},
+ {"tipo": "ticks", "cena": "cofre", "p": 0.05, "ate": 0.95, "passo": 0.5},
+ {"tipo": "alerta", "cena": "fecho", "p": 0.2},
+ {"tipo": "fim", "t": -3.6}
+]

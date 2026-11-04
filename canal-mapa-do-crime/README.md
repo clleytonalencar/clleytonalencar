@@ -4,7 +4,15 @@
 
 Inspiração de formato: o canal *Battle Analysis* (@battleanalysis79), que fez 1,8 milhão de views no primeiro mês narrando batalhas indianas com mapas e peças. Aqui aplicamos a mesma lógica a crimes brasileiros, para o público brasileiro.
 
-**Dois visuais em teste:** motion graphics de mapa (este documento) e **jogo 2D em pixel art com bonecos**, descrito em [`ANGULO-JOGO-2D.md`](ANGULO-JOGO-2D.md). Os dois pilotos usam a mesma narração para comparar lado a lado.
+**Visual padrão: 3D (Three.js).** Maquete noturna da cidade, subsolo em "raio-X", bonecos low-poly e câmera de drone. Foi escolhido depois de testar motion graphics 2D e pixel art (o pixel ficou difícil de ler no celular). Piloto: `piloto-01-banco-central/entregas/piloto-01-3d.mp4`. Conceito do pixel art: [`ANGULO-JOGO-2D.md`](ANGULO-JOGO-2D.md).
+
+**Como produzir:** as skills ficam em `.claude/skills/` na raiz do repositório:
+- `video-true-crime`: o passo a passo completo;
+- `roteiro-true-crime`: pesquisa e roteiro;
+- `narracao-mixagem`: voz, trilha e mixagem com níveis medidos;
+- `cena-3d-threejs`: cenas 3D e render.
+
+**Padrão de áudio:** voz em −16 LUFS, trilha pelo menos 15 LU abaixo da voz e master em −14 LUFS. O `mix.py` reprova o vídeo automaticamente se a voz ficar baixa.
 
 ---
 

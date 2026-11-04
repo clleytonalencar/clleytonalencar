@@ -6,6 +6,10 @@ Teaser de ~61 s em 1920×1080 / 30 fps, feito 100% em motion graphics 2D.
 - **Thumbnail:** `entregas/thumbnail.jpg` (1280×720)
 - **Avatar do canal:** `entregas/avatar.png`
 
+**Versão 3D (padrão do canal):** `entregas/piloto-01-3d.mp4` + `entregas/thumbnail-3d.jpg`. Código em `versao-3d/` (`cena.js` + `eventos.json`), usando as skills `cena-3d-threejs` e `narracao-mixagem`.
+
+Todas as versões foram remixadas com a mixagem nova: voz em −16 LUFS e ≥ 15 LU acima da trilha. O relatório de cada uma fica em `entregas/*_mix.json`.
+
 **Versão jogo 2D (pixel art, mesma narração):** `entregas/piloto-01-pixel.mp4` + `entregas/thumbnail-pixel.jpg`. Veja o conceito em `../ANGULO-JOGO-2D.md`. Para regerar:
 
 ```bash

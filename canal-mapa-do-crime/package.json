@@ -1,0 +1,8 @@
+{
+  "name": "mapa-do-crime",
+  "private": true,
+  "description": "Dependências dos vídeos 3D (Three.js). Playwright e ffmpeg vêm do sistema.",
+  "dependencies": {
+    "three": "0.187.0"
+  }
+}
