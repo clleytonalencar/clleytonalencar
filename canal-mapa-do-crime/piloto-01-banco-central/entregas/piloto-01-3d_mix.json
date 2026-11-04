@@ -1,0 +1,10 @@
+{
+ "voz_entrada_LUFS": -17.8,
+ "trilha_entrada_LUFS": -16.0,
+ "voz_LUFS": -16.0,
+ "trilha_ducked_LUFS": -35.3,
+ "voz_acima_da_trilha_LU": 19.3,
+ "final_LUFS": -14.0,
+ "final_true_peak_dBFS": -1.0,
+ "saida": "entregas/piloto-01-3d.mp4"
+}

@@ -345,8 +345,8 @@ function overlay(t) {
   if (id === 'cofre') {
     counter('LEVADO', brl(164700000 * O.k), 64, 740, C.amber, 1, 'left', 88);
     counter('PESO', `${(3.5 * O.k).toFixed(1).replace('.', ',')} t`, W - 64, 740, C.amber, 1, 'right', 88);
-    tag3D(v3(58.5, 1.4, -6.5), -80, -120, 'NOTAS NOVAS', 'SERIADAS · NÃO LEVADAS', C.dim, eout(seg(p, .05, .15)));
-    tag3D(v3(63, .5, 7.6), -160, 60, 'RENTE ÀS PAREDES', 'FORA DO ALCANCE DO SENSOR', C.red, eout(seg(p, .3, .4)));
+    tag3D(v3(58.5, 1.4, -6.5), -40, 170, 'NOTAS NOVAS', 'SERIADAS · NÃO LEVADAS', C.dim, eout(seg(p, .05, .15)));
+    tag3D(v3(63, .5, 7.6), 220, -110, 'RENTE ÀS PAREDES', 'FORA DO ALCANCE DO SENSOR', C.red, eout(seg(p, .3, .4)));
   }
   if (id === 'fecho') {
     if (p < .4) { tag3D(O.clerk, 140, -140, 'COFRE VAZIO', 'SEGUNDA-FEIRA DE MANHÃ', C.red, eout(seg(p, .2, .28)) * (1 - seg(p, .33, .38))); }
