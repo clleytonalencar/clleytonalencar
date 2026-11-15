@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Stories da semana — padrão Ótica Beira Rio</title>
+<style>
+  @font-face { font-family: Anton; src: url(fonts/anton-latin-400-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 600; src: url(fonts/montserrat-latin-600-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 700; src: url(fonts/montserrat-latin-700-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 800; src: url(fonts/montserrat-latin-800-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 900; src: url(fonts/montserrat-latin-900-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 800; font-style: italic; src: url(fonts/montserrat-latin-800-italic.woff2); }
+  :root { --b1: #1450C8; --b2: #0B2E7A; --b3: #071d52; --y: #F5C518; --w: #fff; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Mont, sans-serif; color: var(--w); background: #000; }
+  /* 1080x1920; keep text out of the top 250px and bottom 260px (Instagram UI) */
+  .s { position: relative; width: 1080px; height: 1920px; overflow: hidden; margin-bottom: 20px;
+    background: linear-gradient(160deg, var(--b1) 0%, var(--b2) 55%, var(--b3) 100%); }
+  .abs { position: absolute; z-index: 3; }
+  .photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+  .shade { position: absolute; inset: 0; z-index: 1;
+    background: linear-gradient(0deg, rgba(7,29,82,.98) 0%, rgba(11,46,122,.9) 38%, rgba(11,46,122,.25) 62%, rgba(11,46,122,0) 75%),
+                linear-gradient(180deg, rgba(7,29,82,.55) 0%, rgba(7,29,82,0) 16%); }
+  .curve { position: absolute; z-index: 1; left: -1230px; top: -300px; width: 1300px; height: 2500px; border-radius: 50%; border-right: 26px solid rgba(255,255,255,.95); }
+  .curve2 { position: absolute; z-index: 1; left: -1268px; top: -300px; width: 1300px; height: 2500px; border-radius: 50%; border-right: 10px solid var(--y); }
+  .L { left: 140px; right: 80px; }
+  .Lp { left: 80px; right: 80px; }
+  .sub { font-size: 28px; font-weight: 800; letter-spacing: 8px; text-transform: uppercase; }
+  .big { font-family: Anton, sans-serif; text-transform: uppercase; line-height: .93; letter-spacing: -1px; }
+  .y { color: var(--y); }
+  .body { font-size: 44px; font-weight: 600; line-height: 1.35; }
+  .body b { color: var(--y); font-weight: 800; }
+  .pill { display: inline-block; background: var(--y); color: var(--b2); font-weight: 900; font-size: 36px; padding: 20px 38px; border-radius: 999px; }
+  .chip { display: inline-block; background: var(--w); color: var(--b2); font-weight: 900; font-size: 34px; padding: 14px 30px; border-radius: 16px; letter-spacing: 2px; }
+  .foot { left: 0; right: 0; bottom: 250px; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 80px; }
+  .wa { display: flex; align-items: center; gap: 14px; font-size: 38px; font-weight: 900; }
+  .wa svg { width: 52px; height: 52px; }
+  .logo { text-align: center; }
+  .logo img { width: 260px; display: block; }
+  .logo small { display: block; font-size: 15px; font-weight: 800; letter-spacing: 4px; margin-top: 2px; }
+  .opts { display: grid; gap: 26px; }
+  .opts div { background: var(--w); color: var(--b2); border-radius: 26px; padding: 22px 36px; font-size: 46px; font-weight: 900; display: flex; gap: 22px; align-items: center; }
+  .opts div span { flex: none; width: 70px; height: 70px; border-radius: 50%; background: var(--y); display: flex; align-items: center; justify-content: center; font-size: 40px; }
+  .check { display: grid; gap: 24px; }
+  .check div { display: flex; gap: 24px; align-items: center; background: rgba(255,255,255,.12); border-radius: 24px; padding: 26px 30px; font-size: 44px; font-weight: 800; }
+  .check div span { flex: none; width: 66px; height: 66px; border-radius: 50%; background: var(--y); color: var(--b2); display: flex; align-items: center; justify-content: center; font-size: 40px; }
+  .check div.g { background: #25d366; }
+  .post { left: 220px; width: 640px; height: 800px; border-radius: 34px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.55); border: 8px solid var(--w); }
+  .post img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .grid { left: 80px; right: 80px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .grid img { width: 100%; aspect-ratio: 4/5; object-fit: cover; border-radius: 18px; border: 5px solid var(--w); display: block; }
+  .tag { font-family: Anton; font-size: 90px; padding: 8px 36px 14px; border-radius: 20px; display: inline-block; }
+  .tag.m { background: var(--w); color: var(--b2); }
+  .tag.v { background: var(--y); color: var(--b2); }
+  .icon { font-size: 190px; line-height: 1; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const WA = '<svg viewBox="0 0 24 24"><path fill="#25d366" d="M12 2a10 10 0 0 0-8.7 14.9L2 22l5.3-1.3A10 10 0 1 0 12 2z"/><path fill="#fff" d="M16.5 14.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.2-.2-.4-.3z"/></svg>';
+const foot = `<div class="abs foot"><div class="wa">${WA}77 99915-7649</div><div class="logo"><img src="logo_transp.png"><small>CUIDANDO DA SUA VISÃO!</small></div></div>`;
+const curve = '<div class="curve"></div><div class="curve2"></div>';
+const F = (n) => `../../anuncios/23nov/fotos_agy/${n}.jpg`;
+const P = (n) => `carimg/${n}.jpg`;
+const SL = (c) => (['c5', 'c6'].includes(c) ? '../../anuncios/semana-2026-11-16/' : '../../anuncios/carrosseis/') + `carrossel_${c}_slide01.jpg`;
+
+// photo story: person on top, text block at the bottom
+const photo = (img, pos, sub, lines, body, pill) => `<div class="s"><img class="photo" src="${img}" style="object-position:${pos}"><div class="shade"></div>
+  <div class="abs Lp" style="bottom:560px">
+    <div class="sub" style="margin-bottom:22px">${sub}</div>
+    <div class="big" style="font-size:130px">${lines}</div>
+    ${body ? `<div class="body" style="margin-top:28px">${body}</div>` : ''}
+    ${pill ? `<div style="margin-top:34px"><span class="pill">${pill}</span></div>` : ''}
+  </div>${foot}</div>`;
+// "new post in the feed" story
+const post = (c, sub, lines) => `<div class="s">${curve}
+  <div class="abs L" style="top:260px"><span class="chip">NOVO POST NO FEED</span></div>
+  <div class="abs L big" style="top:350px;font-size:84px">${lines}</div>
+  <div class="abs post" style="top:550px"><img src="${SL(c)}"></div>
+  <div class="abs L" style="top:1385px;font-size:38px;font-weight:800">${sub}</div>${foot}</div>`;
+// text card on the blue background
+const text = (sub, icon, lines, body, pill) => `<div class="s">${curve}
+  <div class="abs L sub" style="top:280px">${sub}</div>
+  <div class="abs icon" style="right:90px;top:340px">${icon}</div>
+  <div class="abs L big" style="top:580px;font-size:140px">${lines}</div>
+  <div class="abs L body" style="top:1130px">${body}</div>
+  ${pill ? `<div class="abs L" style="top:1380px"><span class="pill">${pill}</span></div>` : ''}${foot}</div>`;
+// question with answer options (reply by DM)
+const quiz = (sub, lines, opts, note) => `<div class="s">${curve}
+  <div class="abs L sub" style="top:280px">${sub}</div>
+  <div class="abs L big" style="top:360px;font-size:120px">${lines}</div>
+  <div class="abs L opts" style="top:860px">${opts.map(([e, t]) => `<div><span>${e}</span>${t}</div>`).join('')}</div>
+  <div class="abs L" style="top:${860 + opts.length * 140 + 20}px;font-size:40px;font-weight:800">${note}</div>${foot}</div>`;
+const answer = (isM, lines, body) => `<div class="s">${curve}
+  <div class="abs L sub" style="top:280px">RESPOSTA DO QUIZ</div>
+  <div class="abs L" style="top:360px"><span class="tag ${isM ? 'm' : 'v'}">${isM ? 'MITO ❌' : 'VERDADE ✅'}</span></div>
+  <div class="abs L big" style="top:560px;font-size:120px">${lines}</div>
+  <div class="abs L body" style="top:1060px">${body}</div>${foot}</div>`;
+const cta = (sub, lines, items) => `<div class="s">${curve}
+  <div class="abs L sub" style="top:280px">${sub}</div>
+  <div class="abs L big" style="top:360px;font-size:150px">${lines}</div>
+  <div class="abs L check" style="top:900px">${items.map(([e, t, g]) => `<div class="${g ? 'g' : ''}"><span>${e}</span>${t}</div>`).join('')}</div>${foot}</div>`;
+const grid = (sub, lines, cs) => `<div class="s">${curve}
+  <div class="abs L sub" style="top:280px">${sub}</div>
+  <div class="abs L big" style="top:360px;font-size:120px">${lines}</div>
+  <div class="abs grid" style="top:590px">${cs.map((c) => `<img src="${SL(c)}">`).join('')}</div>
+  <div class="abs L" style="top:1370px;font-size:38px;font-weight:800">Veja todos no nosso feed 👆 e salve os seus favoritos 🔖</div>${foot}</div>`;
+
+const CONSULTA = 'CONSULTA COM <span class="y">OFTALMOLOGISTA</span>';
+const S = [
+  // Seg 16
+  photo(F('10'), '50% 30%', 'BOM DIA, IBOTIRAMA! ☀️', 'SEMANA NOVA,<br><span class="y">OLHOS EM DIA</span>', 'Essa semana tem <b>dica todo dia</b> aqui. E na <b>segunda, 23/11</b>, tem oftalmologista ao lado da Ótica Beira Rio.', 'ATIVE AS NOTIFICAÇÕES 🔔'),
+  post('c1', 'Veja no nosso feed 👆 e mande para quem vive afastando o celular 📱', '5 SINAIS DE <span class="y">ALERTA</span> DA SUA VISÃO'),
+  quiz('ENQUETE 👀', 'VOCÊ AFASTA O <span class="y">CELULAR</span> PARA LER?', [['🙋', 'Sim, toda hora'], ['🤏', 'Às vezes'], ['😎', 'Não, leio de boa']], 'Responda no direct 💬 que a gente te ajuda!'),
+  cta('SEGUNDA, 23/11 · IBOTIRAMA', CONSULTA, [['📅', 'Segunda-feira, 23/11'], ['📍', 'Ao lado da Ótica Beira Rio'], ['⏳', 'Vagas limitadas'], ['💬', 'Agende pelo WhatsApp', true]]),
+  // Ter 17
+  photo(P('p3'), '50% 25%', 'PERGUNTA DO DIA', 'QUAL É O FORMATO<br>DO SEU <span class="y">ROSTO?</span>', 'Redondo, quadrado, oval ou coração? A armação certa <b>valoriza o seu estilo</b>.', 'RESPONDA NO DIRECT 💬'),
+  post('c3', 'Descubra a armação ideal no nosso feed 👆', 'A ARMAÇÃO <span class="y">PERFEITA</span> PARA VOCÊ'),
+  text('DICA DO DIA', '👓', 'A ARMAÇÃO TEM<br>QUE TER A <span class="y">LARGURA</span><br>DO SEU ROSTO', 'Nem maior, nem menor: o óculos deve acompanhar a linha do rosto e as <b>sobrancelhas</b>.', ''),
+  photo(P('p2'), '50% 25%', 'NA DÚVIDA?', 'VENHA <span class="y">PROVAR!</span>', '📍 <b>Ótica Beira Rio</b><br>Av. Ex-Combatentes, 545 · Ibotirama', 'TE ESPERAMOS AQUI 👋'),
+  // Qua 18
+  quiz('MITO OU VERDADE? 🤔', 'LER NO ESCURO <span class="y">ESTRAGA</span> A VISTA?', [['❌', 'Mito'], ['✅', 'Verdade']], 'Pense na resposta… ela sai no próximo story 👉'),
+  answer(true, 'LER NO ESCURO NÃO <span class="y">ESTRAGA</span> A VISTA', 'Pouca luz <b>cansa</b> os olhos e pode dar dor de cabeça, mas não causa dano permanente. Mesmo assim, leia com boa luz! 💡'),
+  post('c2', 'Teste o que você sabe no nosso feed 👆', 'MITO OU <span class="y">VERDADE?</span>'),
+  photo(F('05'), '50% 30%', 'MUITO TEMPO NA TELA?', 'REGRA<br><span class="y">20-20-20</span>', 'A cada <b>20 minutos</b>, olhe para algo a <b>6 metros</b> por <b>20 segundos</b>. Seus olhos agradecem!', 'SALVE PARA LEMBRAR 🔖'),
+  // Qui 19
+  photo(P('p4'), '50% 25%', 'CONFESSA… 😅', 'LIMPA O ÓCULOS<br>NA <span class="y">CAMISETA?</span>', 'O tecido risca a lente. Use <b>água, sabão neutro</b> e uma <b>flanela limpa</b>.', 'DICA DA ÓTICA 👓'),
+  post('c4', 'Mais 5 cuidados no nosso feed 👆', 'SEUS ÓCULOS <span class="y">DURANDO MAIS</span>'),
+  text('ÓCULOS TORTO OU FROUXO?', '🔧', 'PASSE NA<br><span class="y">ÓTICA BEIRA</span><br><span class="y">RIO</span>', 'Armação torta tira a lente do lugar e <b>atrapalha a visão</b>. Passe aqui para um ajuste.', 'AV. EX-COMBATENTES, 545'),
+  photo(F('04'), '50% 30%', 'SEGUNDA, 23/11 · IBOTIRAMA', 'CONSULTA COM<br><span class="y">OFTALMOLOGISTA</span>', 'Aqui ao lado da Ótica Beira Rio. <b>Garanta seu horário</b> pelo WhatsApp.', 'CHAME NO WHATSAPP 📲'),
+  // Sex 20
+  quiz('MITO OU VERDADE? ☀️', 'ÓCULOS ESCURO <span class="y">SEM PROTEÇÃO UV</span> FAZ MAL?', [['❌', 'Mito'], ['✅', 'Verdade']], 'A resposta sai no próximo story 👉'),
+  answer(false, 'SEM FILTRO UV, A LENTE <span class="y">ESCURA</span> ENGANA', 'A lente escura faz a pupila <b>dilatar</b>. Sem filtro UV, entra <b>mais radiação</b> nos olhos. Escolha óculos com proteção UV.'),
+  post('c6', 'Veja no nosso feed 👆', 'ÓCULOS DE SOL NÃO É <span class="y">SÓ ESTILO</span>'),
+  photo(P('s1'), '50% 25%', 'SEXTOU! ☀️🕶️', 'SEXTOU COM<br><span class="y">PROTEÇÃO</span>', 'Vem escolher o seu <b>óculos de sol com proteção UV</b> na Ótica Beira Rio.', 'AV. EX-COMBATENTES, 545'),
+  // Sáb 21
+  photo(F('03'), '50% 30%', 'SEGUNDA, 23/11 · IBOTIRAMA', '<span class="y">ÚLTIMOS</span><br>HORÁRIOS!', 'Consulta com <b>oftalmologista</b> na segunda, aqui ao lado da Ótica Beira Rio.', 'AGENDE PELO WHATSAPP 📲'),
+  post('c5', 'Pais, vejam no nosso feed 👆', 'SEU FILHO <span class="y">ENXERGA BEM?</span>'),
+  photo(F('06'), '50% 30%', 'PAIS, FIQUEM DE OLHO 👀', 'SEU FILHO<br><span class="y">APERTA OS OLHOS?</span>', 'Senta perto da TV, aperta os olhos ou tem dificuldade na escola? Pode ser <b>problema de visão</b>.', 'SEGUNDA 23/11 TEM OFTALMO'),
+  cta('SEGUNDA, 23/11 · IBOTIRAMA', 'GARANTA SEU <span class="y">HORÁRIO</span>', [['👁️', 'Consulta com oftalmologista'], ['📅', 'Segunda-feira, 23/11'], ['📍', 'Ao lado da Ótica Beira Rio'], ['💬', 'WhatsApp 77 99915-7649', true]]),
+  // Dom 22
+  photo(F('04'), '50% 30%', 'SEGUNDA, 23/11 · IBOTIRAMA', '<span class="y">AMANHÃ</span> TEM<br>OFTALMOLOGISTA', 'Aqui ao lado da Ótica Beira Rio. Ainda dá tempo de <b>agendar</b>!', 'CHAME NO WHATSAPP 📲'),
+  grid('RESUMO DA SEMANA', 'VOCÊ VIU <span class="y">TODOS?</span>', ['c1', 'c3', 'c2', 'c4', 'c6', 'c5']),
+  quiz('SUA OPINIÃO 💬', 'QUAL DICA VOCÊ QUER NA <span class="y">PRÓXIMA SEMANA?</span>', [['🧒', 'Visão das crianças'], ['👓', 'Lentes e armações'], ['☀️', 'Óculos de sol'], ['👁️', 'Saúde dos olhos']], 'Responda no direct 💬'),
+  photo(P('p5'), '50% 25%', 'DOMINGO 💙', 'CUIDAR DA VISÃO É<br><span class="y">CUIDAR DE VOCÊ</span>', 'Enxergar bem faz diferença no trabalho, na leitura e no <b>dia a dia</b>.', ''),
+  cta('AMANHÃ, 23/11 · IBOTIRAMA', 'AINDA DÁ <span class="y">TEMPO!</span>', [['👁️', 'Consulta com oftalmologista'], ['📅', 'Amanhã, segunda 23/11'], ['📍', 'Ao lado da Ótica Beira Rio'], ['💬', 'Chame no WhatsApp', true]]),
+  photo(F('09'), '50% 30%', 'BOA NOITE, IBOTIRAMA 🌙', 'ATÉ <span class="y">AMANHÃ!</span>', 'Segunda, <b>23/11</b>, tem consulta com oftalmologista ao lado da Ótica Beira Rio.', 'TE ESPERAMOS 👁️'),
+];
+document.getElementById('root').innerHTML = S.join('');
+</script>
+</body>
+</html>
