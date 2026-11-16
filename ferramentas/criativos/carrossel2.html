@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Carrosséis — padrão Ótica Beira Rio</title>
+<style>
+  @font-face { font-family: Anton; src: url(fonts/anton-latin-400-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 500; src: url(fonts/montserrat-latin-500-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 600; src: url(fonts/montserrat-latin-600-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 700; src: url(fonts/montserrat-latin-700-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 800; src: url(fonts/montserrat-latin-800-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 900; src: url(fonts/montserrat-latin-900-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 800; font-style: italic; src: url(fonts/montserrat-latin-800-italic.woff2); }
+  :root { --b1: #1450C8; --b2: #0B2E7A; --b3: #071d52; --y: #F5C518; --w: #fff; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Mont, sans-serif; color: var(--w); background: #000; }
+  .s { position: relative; width: 1080px; height: 1350px; overflow: hidden; margin-bottom: 20px;
+    background: linear-gradient(150deg, var(--b1) 0%, var(--b2) 55%, var(--b3) 100%); }
+  .abs { position: absolute; z-index: 3; }
+  .photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+  .shadeL { position: absolute; inset: 0; z-index: 1;
+    background: linear-gradient(90deg, rgba(11,46,122,.96) 0%, rgba(11,46,122,.85) 30%, rgba(11,46,122,.25) 58%, rgba(11,46,122,0) 75%),
+                linear-gradient(0deg, rgba(7,29,82,.95) 0%, rgba(7,29,82,0) 26%); }
+  /* white curve on the left edge, as in the feed */
+  .curve { position: absolute; z-index: 1; left: -1230px; top: -200px; width: 1300px; height: 1750px; border-radius: 50%;
+    border-right: 26px solid rgba(255,255,255,.95); box-shadow: 20px 0 0 0 rgba(245,197,24,.0); }
+  .curve2 { position: absolute; z-index: 1; left: -1268px; top: -200px; width: 1300px; height: 1750px; border-radius: 50%; border-right: 10px solid var(--y); }
+
+  .sub { left: 80px; top: 120px; font-size: 26px; font-weight: 700; letter-spacing: 9px; text-transform: uppercase; opacity: .95; }
+  .big { left: 76px; font-family: Anton, sans-serif; text-transform: uppercase; line-height: .92; letter-spacing: -1px; }
+  .big .y { color: var(--y); }
+  .big .it { font-family: Mont; font-weight: 800; font-style: italic; text-transform: none; letter-spacing: -2px; color: var(--y); }
+  .body { left: 80px; font-size: 32px; font-weight: 600; line-height: 1.35; }
+  .body b { color: var(--y); font-weight: 800; }
+  .pill { left: 80px; background: var(--y); color: var(--b2); font-weight: 800; font-size: 30px; padding: 16px 32px; border-radius: 999px; line-height: 1.2; }
+
+  .foot { left: 0; right: 0; bottom: 0; height: 190px; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 70px 46px; }
+  .wa { display: flex; align-items: center; gap: 12px; font-size: 32px; font-weight: 800; }
+  .wa svg { width: 42px; height: 42px; }
+  .logo { text-align: center; }
+  .logo img { width: 250px; display: block; }
+  .logo small { display: block; font-size: 15px; font-weight: 800; letter-spacing: 4px; margin-top: 2px; }
+  .page { font-size: 26px; font-weight: 800; letter-spacing: 3px; opacity: .8; }
+
+  .n { left: 70px; font-family: Anton; font-size: 300px; line-height: .8; color: var(--y); }
+  .icon { right: 90px; top: 150px; font-size: 170px; line-height: 1; }
+  .tag { left: 80px; top: 200px; font-family: Anton; font-size: 64px; padding: 6px 30px 10px; border-radius: 16px; letter-spacing: 1px; }
+  .tag.m { background: var(--w); color: var(--b2); }
+  .tag.v { background: var(--y); color: var(--b2); }
+  .check { left: 80px; right: 80px; display: grid; gap: 22px; }
+  .check div { display: flex; gap: 22px; align-items: center; background: rgba(255,255,255,.1); border-radius: 22px; padding: 22px 28px; font-size: 40px; font-weight: 800; }
+  .check div span { flex: none; width: 60px; height: 60px; border-radius: 50%; background: var(--y); color: var(--b2); display: flex; align-items: center; justify-content: center; font-size: 40px; }
+  .check div.g { background: #25d366; }
+  .face { right: 70px; top: 300px; width: 400px; height: 400px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const WA = '<svg viewBox="0 0 24 24"><path fill="#25d366" d="M12 2a10 10 0 0 0-8.7 14.9L2 22l5.3-1.3A10 10 0 1 0 12 2z"/><path fill="#fff" d="M16.5 14.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.2-.2-.4-.3z"/></svg>';
+const foot = (p, n) => `<div class="abs foot"><div class="wa">${WA}77 99915-7649</div>${p ? `<div class="page">${p}/${n}</div>` : ''}<div class="logo"><img src="logo_transp.png"><small>CUIDANDO DA SUA VISÃO!</small></div></div>`;
+const curve = '<div class="curve"></div><div class="curve2"></div>';
+
+// cover: photo with person on the right, giant condensed title on the left
+const cover = (n, img, pos, sub, lines, body, pill) => `<div class="s"><img class="photo" src="${img}" style="object-position:${pos}"><div class="shadeL"></div>
+  <div class="abs sub">${sub}</div>
+  <div class="abs big" style="top:200px">${lines}</div>
+  <div class="abs body" style="top:${body[0]}px;width:500px">${body[1]}</div>
+  <div class="abs pill" style="top:${body[0] + 190}px">${pill}</div>${foot(0, n)}</div>`;
+// numbered tip
+const tip = (p, n, sub, k, icon, title, txt) => `<div class="s">${curve}
+  <div class="abs sub" style="left:140px">${sub}</div><div class="abs icon">${icon}</div>
+  <div class="abs n" style="left:140px;top:250px">${k}</div>
+  <div class="abs big" style="left:140px;top:560px;font-size:112px;width:860px">${title}</div>
+  <div class="abs body" style="left:140px;top:880px;width:840px;font-size:40px">${txt}</div>${foot(p, n)}</div>`;
+const myth = (p, n, isM, icon, title, txt) => `<div class="s">${curve}
+  <div class="abs sub" style="left:140px">MITO OU VERDADE?</div><div class="abs icon">${icon}</div>
+  <div class="abs tag ${isM ? 'm' : 'v'}" style="left:140px;top:230px">${isM ? 'MITO ❌' : 'VERDADE ✅'}</div>
+  <div class="abs big" style="left:140px;top:400px;font-size:104px;width:860px">${title}</div>
+  <div class="abs body" style="left:140px;top:820px;width:840px;font-size:40px">${txt}</div>${foot(p, n)}</div>`;
+const face = (shape) => ({
+  redondo: '<circle cx="200" cy="210" r="160"/>', quadrado: '<rect x="50" y="50" width="300" height="320" rx="36"/>',
+  oval: '<ellipse cx="200" cy="210" rx="130" ry="180"/>', coracao: '<path d="M50 80 Q200 15 350 80 Q350 240 200 390 Q50 240 50 80 Z"/>',
+}[shape]);
+const glasses = (k) => ({
+  rect: '<rect x="85" y="175" width="100" height="66" rx="10"/><rect x="215" y="175" width="100" height="66" rx="10"/><path d="M185 205 h30"/>',
+  round: '<circle cx="138" cy="208" r="50"/><circle cx="262" cy="208" r="50"/><path d="M188 203 h24"/>',
+  any: '<rect x="88" y="176" width="96" height="64" rx="28"/><rect x="216" y="176" width="96" height="64" rx="28"/><path d="M184 205 h32"/>',
+  aviator: '<path d="M85 180 h100 q0 66 -48 66 q-52 0 -52 -66z"/><path d="M215 180 h100 q0 66 -52 66 q-48 0 -48 -66z"/><path d="M185 190 h30"/>',
+}[k]);
+const shape = (p, n, title, s, k, txt) => `<div class="s">${curve}
+  <div class="abs sub" style="left:140px">FORMATO DO ROSTO</div>
+  <svg class="abs face" viewBox="0 0 400 400"><g fill="rgba(255,255,255,.1)" stroke="#fff" stroke-width="8">${face(s)}</g>
+    <g fill="rgba(245,197,24,.2)" stroke="#F5C518" stroke-width="9" stroke-linejoin="round">${glasses(k)}</g></svg>
+  <div class="abs big" style="left:140px;top:230px;font-size:120px;width:480px">${title}</div>
+  <div class="abs body" style="left:140px;top:780px;width:840px;font-size:42px">${txt}</div>${foot(p, n)}</div>`;
+const cta = (n, lines, items) => `<div class="s">${curve}
+  <div class="abs sub" style="left:140px">GOSTOU DO CONTEÚDO?</div>
+  <div class="abs big" style="left:140px;top:190px;font-size:140px">${lines}</div>
+  <div class="abs check" style="left:140px;top:610px">${items.map(([e, t, g]) => `<div class="${g ? 'g' : ''}"><span>${e}</span>${t}</div>`).join('')}</div>${foot(n, n)}</div>`;
+
+const CTA_ITEMS = [['🔖','Salve para lembrar'],['📤','Mande para quem precisa'],['👓','Siga a Ótica Beira Rio'],['💬','Chame no WhatsApp', true]];
+
+const C = {
+  c1: [
+    cover(7,'carimg/p1.jpg','70% 30%','SUA VISÃO ANDA DANDO',
+      '<div style="font-size:150px">5 SINAIS</div><div style="font-size:150px" class="y">DE ALERTA</div>',
+      [600,'que você pode estar <b>ignorando</b>. Confira e veja se é hora de examinar a vista.'],'ARRASTE PARA O LADO ➜'),
+    tip(2,7,'SINAL DE ALERTA','1','📱','AFASTA O <span class="y">CELULAR</span> PRA LER','Esticar o braço para ler mensagens pode ser <b>vista cansada</b>, muito comum depois dos 40.'),
+    tip(3,7,'SINAL DE ALERTA','2','🤕','DOR DE CABEÇA NO <span class="y">FIM DO DIA</span>','O esforço para enxergar o dia todo pode causar <b>dor de cabeça</b> na testa e nas têmporas.'),
+    tip(4,7,'SINAL DE ALERTA','3','😣','APERTA OS OLHOS <span class="y">PRA VER LONGE</span>','Placa, TV ou quadro da escola só ficam nítidos apertando os olhos? Pode ser <b>miopia</b>.'),
+    tip(5,7,'SINAL DE ALERTA','4','🔥','OLHOS ARDENDO E <span class="y">CANSADOS</span>','Ardência, coceira e olho vermelho depois da tela podem ser <b>olho seco</b> ou cansaço visual.'),
+    tip(6,7,'SINAL DE ALERTA','5','🌫️','VISÃO EMBAÇADA <span class="y">OU DUPLA</span>','Se a imagem embaça ou fica dupla, <b>não espere</b>: procure um oftalmologista.'),
+    cta(7,'NÃO DEIXE<br><span class="y">PRA DEPOIS!</span>', CTA_ITEMS),
+  ],
+  c2: [
+    cover(7,'carimg/p2.jpg','70% 30%','SERÁ QUE É VERDADE?',
+      '<div style="font-size:170px">MITO</div><div style="font-size:120px" class="y">OU VERDADE?</div>',
+      [560,'O que é <b>mito</b> e o que é <b>verdade</b> sobre os seus olhos. Teste o que você sabe!'],'ARRASTE PARA O LADO ➜'),
+    myth(2,7,true,'🌙','LER NO ESCURO <span class="y">ESTRAGA A VISTA</span>','Pouca luz <b>cansa</b> os olhos e dá dor de cabeça, mas não causa dano permanente. Mesmo assim, leia com boa luz.'),
+    myth(3,7,false,'💻','TELA DEMAIS <span class="y">CANSA OS OLHOS</span>','Piscamos menos na tela. Use a <b>regra 20-20-20</b>: a cada 20 min, olhe algo a 6 metros por 20 segundos.'),
+    myth(4,7,true,'👓','USAR ÓCULOS <span class="y">VICIA</span>','Óculos <b>não pioram</b> nem viciam a visão. Eles só corrigem o que o olho já precisa.'),
+    myth(5,7,false,'🧒','CRIANÇA TAMBÉM <span class="y">PRECISA DE EXAME</span>','Muita criança não percebe que enxerga mal. Dificuldade na escola pode ser <b>problema de visão</b>.'),
+    myth(6,7,true,'🥕','CENOURA <span class="y">CURA MIOPIA</span>','Comer bem faz bem aos olhos, mas <b>nenhum alimento corrige o grau</b>. Quem corrige é óculos ou lente.'),
+    cta(7,'SALVE E<br><span class="y">COMPARTILHE!</span>', CTA_ITEMS),
+  ],
+  c3: [
+    cover(6,'carimg/p3.jpg','70% 30%','CONHEÇA A ARMAÇÃO',
+      '<div style="font-size:150px">PERFEITA</div><div style="font-size:110px">PARA O SEU</div><div style="font-size:150px" class="y">ROSTO</div>',
+      [690,'Descubra o <b>formato do seu rosto</b> e qual modelo valoriza mais o seu estilo.'],'ARRASTE PARA O LADO ➜'),
+    shape(2,6,'ROSTO <span class="y">REDONDO</span>','redondo','rect','Prefira armações <b>retangulares ou quadradas</b>: os ângulos dão mais definição ao rosto.'),
+    shape(3,6,'ROSTO <span class="y">QUADRADO</span>','quadrado','round','Armações <b>redondas ou ovais</b> suavizam o maxilar marcado.'),
+    shape(4,6,'ROSTO <span class="y">OVAL</span>','oval','any','Sortudo! <b>Quase todos os modelos</b> combinam. Aposte em armações do tamanho do rosto.'),
+    shape(5,6,'ROSTO <span class="y">CORAÇÃO</span>','coracao','aviator','Modelos <b>aviador ou com a parte de baixo marcada</b> equilibram a testa mais larga.'),
+    cta(6,'NA DÚVIDA?<br><span class="y">VENHA PROVAR!</span>', [['📍','Av. Ex-Combatentes, 545'],['👓','Centenas de modelos'],['🔖','Salve para lembrar'],['💬','Chame no WhatsApp', true]]),
+  ],
+  c4: [
+    cover(7,'carimg/p4.jpg','70% 30%','DICAS DA ÓTICA BEIRA RIO',
+      '<div style="font-size:130px">SEUS ÓCULOS</div><div style="font-size:130px">DURANDO</div><div style="font-size:150px" class="y">MUITO MAIS</div>',
+      [670,'5 cuidados simples para <b>proteger as lentes</b> e a armação no dia a dia.'],'ARRASTE PARA O LADO ➜'),
+    tip(2,7,'CUIDADO COM OS ÓCULOS','1','💧','ÁGUA E <span class="y">SABÃO NEUTRO</span>','Uma gota de detergente neutro e água corrente tiram a gordura <b>sem riscar</b> as lentes.'),
+    tip(3,7,'CUIDADO COM OS ÓCULOS','2','🧽','SÓ FLANELA DE <span class="y">MICROFIBRA</span>','<b>Nunca</b> use camiseta, papel ou guardanapo: eles riscam a lente com o tempo.'),
+    tip(4,7,'CUIDADO COM OS ÓCULOS','3','🕶️','SEMPRE <span class="y">NO ESTOJO</span>','Fora do estojo, nunca apoie com as lentes para baixo. É assim que surgem os riscos.'),
+    tip(5,7,'CUIDADO COM OS ÓCULOS','4','🚗','LONGE DO <span class="y">PAINEL DO CARRO</span>','O calor deforma a armação e pode danificar o tratamento das lentes.'),
+    tip(6,7,'CUIDADO COM OS ÓCULOS','5','🔧','AJUSTE E <span class="y">LIMPEZA NA ÓTICA</span>','Parafuso frouxo e plaqueta torta incomodam. <b>Passe na Ótica Beira Rio</b> para um ajuste.'),
+    cta(7,'SEUS ÓCULOS<br><span class="y">AGRADECEM!</span>', CTA_ITEMS),
+  ],
+};
+document.getElementById('root').innerHTML = Object.entries(C).map(([k, slides]) =>
+  slides.map((s, i) => s.replace('<div class="s"', `<div class="s" id="${k}s${i+1}"`)).join('')).join('');
+</script>
+</body>
+</html>
