@@ -48,3 +48,19 @@ Legenda na tela em **amarelo, negrito e itálico** na parte de baixo, como no fe
 - Sex: quiz "mito ou verdade" · resposta · vitrine de óculos de sol
 - Sáb: "Últimos horários para segunda!" · movimento da loja · WhatsApp
 - Dom: "Amanhã tem oftalmologista" · repost dos melhores posts da semana
+
+## Agendado no Postiz (os dois perfis)
+
+Carrosséis às 07h30 (seg a sáb). Stories prontos em `stories/story_01..30.jpg` (resumo em `stories/00_resumo_stories.jpg`):
+
+| Dia | 08h00 | 10h30 | 15h00 | 18h30 |
+|---|---|---|---|---|
+| Seg 16 | 01 Bom dia | 02 Post C1 | 03 Enquete celular | 04 Consulta 23/11 |
+| Ter 17 | 05 Formato do rosto | 06 Post C3 | 07 Dica armação | 08 Venha provar |
+| Qua 18 | 09 Quiz ler no escuro | 10 Resposta: mito | 11 Post C2 | 12 Regra 20-20-20 |
+| Qui 19 | 13 Limpa na camiseta? | 14 Post C4 | 15 Ajuste na ótica | 16 Consulta 23/11 |
+| Sex 20 | 17 Quiz óculos UV | 18 Resposta: verdade | 19 Post C6 | 20 Sextou com proteção |
+| Sáb 21 | 21 Últimos horários | 22 Post C5 | 23 Seu filho aperta os olhos? | 24 Garanta seu horário |
+| Dom 22 | 09h 25 Amanhã tem oftalmo · 11h 26 Resumo da semana · 14h 27 Qual dica você quer? · 17h 28 Cuidar da visão · 19h30 29 Ainda dá tempo · 21h 30 Até amanhã | | | |
+
+Enquetes e caixinhas de pergunta não podem ser adicionadas pela API: os stories de pergunta pedem a resposta no direct. Se quiser o sticker de enquete, a equipe posta a mesma arte manualmente com o sticker.
