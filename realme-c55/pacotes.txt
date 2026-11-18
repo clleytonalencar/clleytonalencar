@@ -28,7 +28,7 @@ com.coloros.childrenspace
 # --- Opcionais: tire o "#" se não usa ---
 # com.heytap.themestore        # loja de temas (sem ela não troca tema/ícones)
 # com.heytap.cloud             # HeyTap Cloud (backup da Realme)
-# com.coloros.gamespaceui      # Espaço de Jogos
-# com.oplus.games              # Espaço de Jogos (versões mais novas)
+com.coloros.gamespaceui      # Espaço de Jogos
+com.oplus.games              # Espaço de Jogos (versões mais novas)
 # com.coloros.compass2         # Bússola
 # com.coloros.floatassistant   # Botão flutuante assistente
