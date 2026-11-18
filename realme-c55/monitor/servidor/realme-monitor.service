@@ -1,0 +1,20 @@
+# Copie para /etc/systemd/system/realme-monitor.service e ajuste o caminho e o token.
+[Unit]
+Description=Monitor do Realme C55
+After=network-online.target
+
+[Service]
+WorkingDirectory=/opt/realme-monitor
+ExecStart=/usr/bin/python3 /opt/realme-monitor/servidor.py
+Environment=MONITOR_TOKEN=TROQUE-POR-UM-TOKEN-LONGO
+Environment=MONITOR_PORT=8787
+# Environment=ALERTA_WEBHOOK=https://ntfy.sh/SEU-TOPICO-SECRETO
+Restart=always
+RestartSec=5
+User=nobody
+Group=nogroup
+StateDirectory=realme-monitor
+Environment=MONITOR_DATA=/var/lib/realme-monitor
+
+[Install]
+WantedBy=multi-user.target
