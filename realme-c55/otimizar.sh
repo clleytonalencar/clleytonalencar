@@ -23,7 +23,7 @@ adb shell settings put global transition_animation_scale 0.5
 adb shell settings put global animator_duration_scale 0.5
 
 echo; echo "== 2b Congelar apps em cache e desligar buscas de Wi-Fi/Bluetooth em segundo plano =="
-for k in cached_apps_freezer wifi_scan_always_enabled ble_scan_always_enabled; do
+[ -f ajustes-originais.txt ] || for k in cached_apps_freezer wifi_scan_always_enabled ble_scan_always_enabled; do
   echo "$k=$(adb shell settings get global $k | tr -d '\r')" >> ajustes-originais.txt
 done
 adb shell settings put global cached_apps_freezer enabled
