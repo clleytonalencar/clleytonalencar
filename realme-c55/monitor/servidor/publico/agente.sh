@@ -15,5 +15,5 @@ baixa() {  # baixa um arquivo e só troca se ele for válido
 for f in monitor.sh config.env pacotes.txt; do baixa "$f"; done
 
 [ -f config.env ] && . ./config.env
-echo "${INTERVALO_SEG:-900}" > intervalo
+echo "${INTERVALO_SEG:-3600}" > intervalo
 [ -f monitor.sh ] && timeout 1800 bash ./monitor.sh

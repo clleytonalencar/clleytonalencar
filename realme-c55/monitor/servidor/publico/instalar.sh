@@ -25,7 +25,7 @@ exec 2>&1
 termux-wake-lock
 while true; do
   bash "$D/agente.sh"
-  sleep "\$(cat "$D/intervalo" 2>/dev/null || echo 900)"
+  sleep "\$(cat "$D/intervalo" 2>/dev/null || echo 3600)"
 done
 RUN
 cat > "$S/log/run" <<'RUN'
