@@ -1,0 +1,34 @@
+# Pacotes que o otimizar.sh remove do usuário principal (pm uninstall --user 0).
+# NÃO apaga do sistema: o restaurar.sh traz tudo de volta, e uma
+# restauração de fábrica também. Coloque "#" na frente de uma linha para manter o app.
+# Se um pacote não existir na sua versão, o script só avisa e segue.
+
+# --- Propaganda / telas de anúncio ---
+com.glance.lockscreenRealme
+com.glance.internet
+com.heytap.pictorial
+com.facebook.appmanager
+com.facebook.services
+com.facebook.system
+com.netflix.partner.activation
+
+# --- Telemetria / estatísticas ---
+com.nearme.statistics.rom
+com.oplus.statistics.rom
+
+# --- Lojas e apps duplicados da Realme ---
+com.heytap.market
+com.nearme.gamecenter
+com.heytap.browser
+com.heytap.quicksearchbox
+com.oppo.music
+com.coloros.video
+com.coloros.childrenspace
+
+# --- Opcionais: tire o "#" se não usa ---
+# com.heytap.themestore        # loja de temas (sem ela não troca tema/ícones)
+# com.heytap.cloud             # HeyTap Cloud (backup da Realme)
+# com.coloros.gamespaceui      # Espaço de Jogos
+# com.oplus.games              # Espaço de Jogos (versões mais novas)
+# com.coloros.compass2         # Bússola
+# com.coloros.floatassistant   # Botão flutuante assistente
