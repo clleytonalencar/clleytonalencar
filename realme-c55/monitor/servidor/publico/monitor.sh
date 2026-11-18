@@ -64,11 +64,22 @@ if [ "${REAPLICAR_DEBLOAT:-0}" = 1 ] && [ "$shizuku" = 1 ] && [ -f pacotes.txt ]
   marca debloat
 fi
 
-if [ "${MANUTENCAO_SEMANAL:-1}" = 1 ] && [ "$shizuku" = 1 ] && [ "$carregando" = 1 ] \
-   && [ "$hora" -ge 2 ] && [ "$hora" -lt 5 ] && pode semanal 604800; then
-  sh_ pm trim-caches 999G >/dev/null; sh_ cmd package bg-dexopt-job >/dev/null
-  marca semanal; acoes+=("manutenção semanal: caches e recompilação")
+# Faxina diária: roda de madrugada (02h-06h) ou, se o celular estava desligado, assim que passar de 30h.
+ultimo_diario=$(cat ultimo_diario 2>/dev/null || echo 0)
+desde_diario=$(( agora - ultimo_diario ))
+if [ "${MANUTENCAO_DIARIA:-1}" = 1 ] && [ "$shizuku" = 1 ] && [ "$desde_diario" -ge 72000 ] \
+   && { [ "$hora" -ge 2 ] && [ "$hora" -lt 6 ] || [ "$desde_diario" -ge 108000 ]; } \
+   && { [ "$carregando" = 1 ] || [ "$bat_pct" -ge "${BATERIA_MIN_MANUTENCAO:-30}" ]; }; then
+  sh_ am kill-all >/dev/null
+  sh_ pm trim-caches 999G >/dev/null
+  acoes+=("faxina diária: fechou apps parados e limpou caches")
+  # Recompilação é mais pesada: todo dia se estiver carregando, senão pelo menos 1x por semana.
+  if [ "$carregando" = 1 ] || pode dexopt 604800; then
+    sh_ cmd package bg-dexopt-job >/dev/null; marca dexopt; acoes+=("faxina diária: recompilou apps")
+  fi
+  marca diario
 fi
+[ "$desde_diario" -ge 172800 ] && [ "$ultimo_diario" != 0 ] && alertas+=("Faxina diária não roda há $(( desde_diario / 86400 )) dias (Shizuku parado ou bateria baixa)")
 
 reiniciar=0
 if [ "$uptime_dias" -ge "${UPTIME_MAX_DIAS:-7}" ]; then
@@ -86,10 +97,10 @@ para_json() { if [ $# -eq 0 ]; then echo '[]'; else printf '%s\n' "$@" | jq -R .
 rel=$(jq -nc \
   --argjson ram "$ram_pct" --argjson disco "$disco_pct" --argjson bat "$bat_pct" \
   --argjson temp "$temp" --argjson carr "$carregando" --argjson up "$uptime_dias" \
-  --argjson shz "$shizuku" --argjson alertas "$(para_json "${alertas[@]}")" \
+  --argjson shz "$shizuku" --arg faxina "$( [ -f ultimo_diario ] && date -d @"$(cat ultimo_diario)" -Iseconds || echo nunca)" --argjson alertas "$(para_json "${alertas[@]}")" \
   --argjson acoes "$(para_json "${acoes[@]}")" --arg quando "$(date -Iseconds)" \
   '{quando:$quando, ram_livre_pct:$ram, disco_livre_pct:$disco, bateria_pct:$bat,
-    temperatura_c:$temp, carregando:($carr==1), dias_ligado:$up, shizuku_ativo:($shz==1),
+    temperatura_c:$temp, carregando:($carr==1), dias_ligado:$up, shizuku_ativo:($shz==1), ultima_faxina:$faxina,
     alertas:$alertas, acoes:$acoes}')
 log "$rel"
 

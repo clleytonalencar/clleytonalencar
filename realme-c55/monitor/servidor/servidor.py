@@ -5,21 +5,38 @@
 - Recebe os relatórios do celular e guarda em dados/relatorios.jsonl.
 - Opcional: avisa num webhook (ex.: ntfy.sh) quando aparecem alertas novos.
 
-Variáveis de ambiente:
+Configuração: arquivo .env ao lado deste script (criado pelo deploy.sh) ou variáveis de ambiente:
   MONITOR_TOKEN   (obrigatória) senha compartilhada com o celular
   MONITOR_PORT    porta local (padrão 8787). Coloque atrás de HTTPS (nginx/Caddy).
   MONITOR_DATA    pasta dos relatórios (padrão ./dados)
   ALERTA_WEBHOOK  URL que recebe um POST de texto quando surgem alertas novos
+  SEM_RELATORIO_HORAS  alerta se o celular ficar esse tempo sem reportar (padrão 3)
 """
-import hmac, json, os, time, urllib.request
+import hmac, json, os, threading, time, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+
+
+def carregar_env(caminho):
+    try:
+        with open(caminho, encoding="utf-8") as f:
+            for linha in f:
+                linha = linha.strip()
+                if linha and not linha.startswith("#") and "=" in linha:
+                    k, v = linha.split("=", 1)
+                    os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+    except OSError:  # sem .env ou sem permissão: usa só as variáveis de ambiente
+        pass
+
+
+carregar_env(os.path.join(BASE, ".env"))
 PUB = os.path.join(BASE, "publico")
 DATA = os.environ.get("MONITOR_DATA", os.path.join(BASE, "dados"))
 TOKEN = os.environ["MONITOR_TOKEN"]
 PORT = int(os.environ.get("MONITOR_PORT", "8787"))
 WEBHOOK = os.environ.get("ALERTA_WEBHOOK", "")
+SEM_RELATORIO = float(os.environ.get("SEM_RELATORIO_HORAS", "3")) * 3600
 ARQUIVOS = {"agente.sh", "monitor.sh", "config.env", "pacotes.txt", "instalar.sh"}
 REL = os.path.join(DATA, "relatorios.jsonl")
 os.makedirs(DATA, exist_ok=True)
@@ -104,6 +121,24 @@ class Handler(BaseHTTPRequestHandler):
         print("%s %s" % (self.address_string(), fmt % args), flush=True)
 
 
+def vigia():
+    """Avisa uma vez quando o celular para de reportar, e de novo quando ele volta."""
+    calado = False
+    while True:
+        time.sleep(300)
+        r = ultimo_relatorio()
+        if not r:
+            continue
+        atraso = time.time() - r.get("recebido_em", 0)
+        if atraso > SEM_RELATORIO and not calado:
+            calado = True
+            avisar(f"Celular sem reportar há {int(atraso // 3600)}h: desligado, sem internet ou o Termux parou.")
+        elif atraso <= SEM_RELATORIO and calado:
+            calado = False
+            avisar("Celular voltou a reportar.")
+
+
 if __name__ == "__main__":
+    threading.Thread(target=vigia, daemon=True).start()
     print(f"realme-monitor na porta {PORT}", flush=True)
     ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()

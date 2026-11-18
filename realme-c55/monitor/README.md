@@ -1,6 +1,6 @@
 # Monitor automático do Realme C55 (Termux + servidor)
 
-O celular verifica a si mesmo a cada 15 minutos, corrige o que der sozinho e manda um relatório para o seu servidor.
+O celular verifica a si mesmo de hora em hora, faz uma faxina completa todo dia, corrige o que der sozinho e manda um relatório para o seu servidor.
 Os scripts ficam **no servidor**: você muda lá e o celular aplica na rodada seguinte.
 
 ```
@@ -10,7 +10,8 @@ Celular (Termux, serviço sempre ativo)            Seu servidor
             ── corrige via Shizuku (rish)
             ── envia relatório ────────────────▶  /realme/relatorio  → dados/relatorios.jsonl
                                                    /realme/status    → último relatório
-                                                   alerta opcional (ex.: ntfy) quando surge problema novo
+                                                   alerta (ntfy) quando surge problema novo
+                                                   alerta se o celular ficar 3h sem reportar
 ```
 
 ## O que ele faz sozinho (padrões em `servidor/publico/config.env`)
@@ -22,33 +23,32 @@ Celular (Termux, serviço sempre ativo)            Seu servidor
 | Bateria > 42 °C | Alerta e alivia o processamento |
 | Animações voltaram para 1x (após atualização) | Reaplica 0.5x |
 | Atualização reinstalou app removido | Remove de novo (lista `pacotes.txt`) |
-| Toda semana, de madrugada, carregando | Limpa caches e recompila apps |
+| Todo dia de madrugada (ou na primeira chance, se estava desligado) | Faxina: fecha apps parados e limpa caches; recompila os apps (todo dia se carregando, no mínimo 1x por semana) |
+| Faxina diária sem rodar há 2 dias | Alerta |
 | Ligado há mais de 7 dias | Alerta; com `REINICIO_AUTO=1` reinicia de madrugada, tela apagada e carregando |
 | Shizuku parado | Alerta (as correções ficam pausadas até iniciar de novo) |
 
 Sem root e sem desbloquear nada: os comandos rodam com a mesma permissão do ADB, via Shizuku.
 
-## 1. Servidor (Linux com Python 3, sem dependências)
+## 1. Servidor (automático, pelo Mac)
 
 ```bash
-sudo mkdir -p /opt/realme-monitor && sudo cp -r servidor/* /opt/realme-monitor/
-openssl rand -hex 24   # gere o token e guarde
-sudo cp /opt/realme-monitor/realme-monitor.service /etc/systemd/system/
-sudo nano /etc/systemd/system/realme-monitor.service   # cole o token em MONITOR_TOKEN
-sudo systemctl daemon-reload && sudo systemctl enable --now realme-monitor
+bash realme-c55/monitor/deploy.sh usuario@seu-servidor
 ```
 
-Exponha com HTTPS pelo seu nginx/Caddy. Exemplo nginx, dentro do `server` do seu domínio:
+O `deploy.sh` confere Python 3.9+ e systemd, copia os arquivos para `/opt/realme-monitor`, cria o `.env`
+na primeira vez (token e tópico de alerta do ntfy aleatórios), sobe o serviço `realme-monitor` (reinicia sozinho
+se cair) e salva o token no Mac em `~/.realme-monitor.env`. Rodar de novo só atualiza os arquivos e mantém o `.env`
+e a `pacotes.txt` do servidor. Porta padrão 8787 (`PORTA=8790 bash deploy.sh ...` para trocar).
+
+Falta só publicar com HTTPS no proxy que o servidor já usa. Exemplo nginx, dentro do `server` do domínio:
 
 ```nginx
 location /realme/ { proxy_pass http://127.0.0.1:8787; }
 ```
 
-Teste: `curl https://SEU-DOMINIO/realme/saude` deve responder `ok`.
-Se você usar a lista de removidos gerada pelo Claude Code (`realme-c55-backup/removidos.txt`), copie-a para `/opt/realme-monitor/publico/pacotes.txt`.
-
-Alertas no celular ou no computador: instale o app **ntfy**, assine um tópico com nome difícil e coloque
-`ALERTA_WEBHOOK=https://ntfy.sh/SEU-TOPICO` no serviço.
+Teste: `curl https://SEU-DOMINIO/realme/saude` deve responder `ok`. Assine no app **ntfy** o tópico que está em
+`ALERTA_WEBHOOK` no `~/.realme-monitor.env`. A etapa 8 do `PROMPT-CLAUDE-CODE.md` faz tudo isso pelo Claude Code.
 
 ## 2. Celular
 
