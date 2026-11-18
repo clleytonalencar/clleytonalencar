@@ -41,7 +41,15 @@ ETAPAS
    - Garantir pelo menos 20% do armazenamento livre, movendo fotos e vídeos para o Google Fotos se preciso.
    - NÃO mexer em "Limite de processos em segundo plano" nem em "Não manter atividades" nas Opções do desenvolvedor.
 7. Verificação: reinicie com adb reboot, espere o aparelho voltar (adb wait-for-device e sys.boot_completed = 1) e repita o diagnóstico da etapa 1 mostrando antes x depois (memória livre, armazenamento, número de pacotes ativos, temperatura da bateria) e o tempo de abertura a frio do WhatsApp e do Instagram medido do mesmo jeito. Me peça para abrir WhatsApp, WhatsApp Business, Instagram, um app de banco e o gov.br e confirmar que tudo funciona. Se algo quebrar, use o restaurar.sh para trazer de volta o último grupo removido.
-8. Relatório final: salve ./realme-c55-backup/RELATORIO.md com tudo que foi feito, o que foi removido, o antes x depois e como reverter.
+8. Monitor automático (pergunte antes se quero fazer esta etapa agora): o objetivo é o celular se verificar sozinho e mandar relatórios para o meu servidor, com os scripts da pasta realme-c55/monitor do repositório (já instalados no servidor; me peça a URL e o token).
+   a) Baixe no Mac as versões mais novas dos APKs oficiais, todos da mesma fonte: Termux, Termux:API e Termux:Boot (releases do GitHub do projeto termux ou F-Droid) e o Shizuku (releases do GitHub RikkaApps/Shizuku). Escolha a variante arm64-v8a quando houver. Instale com adb install.
+   b) Tire da economia de bateria e libere o segundo plano: para com.termux, com.termux.api, com.termux.boot e moe.shizuku.privileged.api rode cmd deviceidle whitelist +PACOTE e cmd appops set PACOTE RUN_ANY_IN_BACKGROUND allow.
+   c) Peça para eu abrir Termux:Boot e Shizuku uma vez, liberar a Inicialização automática dos quatro apps nas configurações da Realme e travar o Termux nos recentes.
+   d) Inicie o Shizuku pelo ADB com o comando que o próprio app Shizuku mostra na tela de "Iniciar via ADB" e confirme que ele aparece como ativo.
+   e) Me guie, um passo por vez, para exportar o rish pelo Shizuku, copiar para o Termux e aceitar a permissão, conferindo que "rish -c id" mostra uid=2000.
+   f) Me passe o comando exato para colar no Termux que instala o monitor: curl -fsSL -H "Authorization: Bearer TOKEN" URL/realme/instalar.sh | bash -s URL TOKEN. Depois que eu rodar, confira pelo Mac com curl em URL/realme/status que o primeiro relatório chegou.
+   g) Copie ./realme-c55-backup/removidos.txt para eu subir no servidor como publico/pacotes.txt, para o monitor manter essa mesma lista removida depois de atualizações.
+9. Relatório final: salve ./realme-c55-backup/RELATORIO.md com tudo que foi feito, o que foi removido, o antes x depois, como reverter e, se a etapa 8 foi feita, como acompanhar o monitor.
 
 Fale comigo em português, de forma simples, e explique cada etapa antes de executar.
 ```
