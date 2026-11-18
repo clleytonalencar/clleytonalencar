@@ -22,16 +22,31 @@ adb shell settings put global window_animation_scale 0.5
 adb shell settings put global transition_animation_scale 0.5
 adb shell settings put global animator_duration_scale 0.5
 
+echo; echo "== 2b Congelar apps em cache e desligar buscas de Wi-Fi/Bluetooth em segundo plano =="
+for k in cached_apps_freezer wifi_scan_always_enabled ble_scan_always_enabled; do
+  echo "$k=$(adb shell settings get global $k | tr -d '\r')" >> ajustes-originais.txt
+done
+adb shell settings put global cached_apps_freezer enabled
+adb shell settings put global wifi_scan_always_enabled 0
+adb shell settings put global ble_scan_always_enabled 0
+
+echo; echo "== 2c Notificações garantidas para WhatsApp e WhatsApp Business =="
+for p in com.whatsapp com.whatsapp.w4b; do adb shell cmd deviceidle whitelist +$p; done
+
 echo; echo "== 3/5 Limpando cache de todos os apps =="
 adb shell pm trim-caches 999G
 
 echo; echo "== 4/5 Compilando apps para rodarem mais rápido (pode levar 10-30 min) =="
 echo "   Deixe o celular conectado e na tomada."
+for p in com.whatsapp com.whatsapp.w4b com.instagram.android br.gov.meugovbr; do
+  adb shell pm path "$p" >/dev/null 2>&1 && adb shell cmd package compile -m speed -f "$p"
+done
 adb shell cmd package compile -m speed-profile -a
 adb shell cmd package bg-dexopt-job
 
 echo; echo "== 5/5 Concluído =="
 echo "Agora faça manualmente (veja README.md):"
+echo "  - Ativar o Modo de alto desempenho (Bateria > Mais configurações)"
 echo "  - Desligar a 'Expansão de RAM' em Configurações > Sobre o telefone > RAM"
 echo "  - Reiniciar o celular"
 read -rp "Reiniciar agora? [s/N] " r; [ "$r" = s ] && adb reboot

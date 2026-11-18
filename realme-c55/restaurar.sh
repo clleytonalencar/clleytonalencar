@@ -10,4 +10,9 @@ done
 for k in window_animation_scale transition_animation_scale animator_duration_scale; do
   adb shell settings put global "$k" 1.0
 done
+if [ -f ajustes-originais.txt ]; then
+  while IFS='=' read -r k v; do
+    [ "$v" = null ] && adb shell settings delete global "$k" || adb shell settings put global "$k" "$v"
+  done < ajustes-originais.txt
+fi
 echo "Restaurado."

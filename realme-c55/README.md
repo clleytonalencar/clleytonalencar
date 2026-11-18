@@ -3,6 +3,8 @@
 Sem root, sem desbloquear bootloader, sem perder garantia. Tudo é reversível.
 
 ## O que o `otimizar.sh` faz
+(Lista completa de melhorias e o prompt para o Claude Code: `PROMPT-CLAUDE-CODE.md`)
+
 1. Remove propaganda (Glance, revista da tela de bloqueio), telemetria e apps duplicados da Realme, lista em `pacotes.txt`
 2. Reduz as animações para 0.5x
 3. Limpa o cache de todos os apps
