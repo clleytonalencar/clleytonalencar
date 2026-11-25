@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Anúncios de consulta — padrão Ótica Beira Rio</title>
+<style>
+  @font-face { font-family: Anton; src: url(fonts/anton-latin-400-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 600; src: url(fonts/montserrat-latin-600-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 700; src: url(fonts/montserrat-latin-700-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 800; src: url(fonts/montserrat-latin-800-normal.woff2); }
+  @font-face { font-family: Mont; font-weight: 900; src: url(fonts/montserrat-latin-900-normal.woff2); }
+  :root { --b1: #1450C8; --b2: #0B2E7A; --b3: #071d52; --y: #F5C518; --w: #fff; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Mont, sans-serif; color: var(--w); background: #000; }
+  .a { position: relative; width: 1080px; overflow: hidden; margin-bottom: 20px;
+    background: linear-gradient(150deg, var(--b1) 0%, var(--b2) 55%, var(--b3) 100%); }
+  .f { height: 1350px; } .st { height: 1920px; }
+  .abs { position: absolute; z-index: 3; }
+  .photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+  .shade { position: absolute; inset: 0; z-index: 1;
+    background: linear-gradient(90deg, rgba(11,46,122,.97) 0%, rgba(11,46,122,.88) 32%, rgba(11,46,122,.3) 58%, rgba(11,46,122,0) 74%),
+                linear-gradient(0deg, rgba(7,29,82,.96) 0%, rgba(7,29,82,0) 24%),
+                linear-gradient(180deg, rgba(7,29,82,.85) 0%, rgba(7,29,82,0) 18%); }
+  .curve { position: absolute; z-index: 1; left: -1230px; top: -300px; width: 1300px; height: 2600px; border-radius: 50%; border-right: 26px solid rgba(255,255,255,.95); }
+  .curve2 { position: absolute; z-index: 1; left: -1268px; top: -300px; width: 1300px; height: 2600px; border-radius: 50%; border-right: 10px solid var(--y); }
+  .top { left: 60px; right: 60px; background: var(--y); color: var(--b2); border-radius: 22px; padding: 18px 26px; display: flex; align-items: center; gap: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+  .top .e { font-size: 50px; }
+  .top .t1 { font-size: 30px; font-weight: 900; letter-spacing: 1px; line-height: 1.1; }
+  .top .t2 { font-size: 26px; font-weight: 800; letter-spacing: 2px; }
+  .sub { left: 70px; font-size: 26px; font-weight: 800; letter-spacing: 8px; text-transform: uppercase; }
+  .big { left: 66px; font-family: Anton, sans-serif; text-transform: uppercase; line-height: .93; letter-spacing: -1px; font-size: 128px; }
+  .y { color: var(--y); }
+  .body { left: 70px; width: 540px; font-size: 36px; font-weight: 600; line-height: 1.35; }
+  .body b { color: var(--y); font-weight: 800; }
+  .pill { left: 70px; white-space: nowrap; background: var(--y); color: var(--b2); font-weight: 900; font-size: 32px; padding: 18px 34px; border-radius: 999px; }
+  .foot { left: 0; right: 0; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 64px; }
+  .wa { display: flex; align-items: center; gap: 12px; font-size: 34px; font-weight: 900; }
+  .wa svg { width: 46px; height: 46px; }
+  .logo { text-align: center; }
+  .logo img { width: 200px; display: block; }
+  .logo small { display: block; font-size: 14px; font-weight: 800; letter-spacing: 4px; margin-top: 2px; }
+  .cal { left: 50%; transform: translateX(-50%); width: 560px; background: var(--w); color: var(--b2); border-radius: 36px; overflow: hidden; text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+  .cal .m { background: var(--y); font-family: Anton; font-size: 64px; padding: 14px 0 18px; letter-spacing: 2px; }
+  .cal .n { font-family: Anton; font-size: 300px; line-height: 1; padding-top: 20px; }
+  .cal .w { font-size: 50px; font-weight: 900; padding: 6px 0 34px; letter-spacing: 4px; }
+  .center { left: 0; right: 0; text-align: center; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// date set by the query string: ?d=12&wd=SÁBADO  (month is always DEZ)
+const q = new URLSearchParams(location.search);
+const D = q.get('d') || '12', WD = q.get('wd') || 'SÁBADO';
+const DATE = `${D}/12`;
+const WA = '<svg viewBox="0 0 24 24"><path fill="#25d366" d="M12 2a10 10 0 0 0-8.7 14.9L2 22l5.3-1.3A10 10 0 1 0 12 2z"/><path fill="#fff" d="M16.5 14.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.2-.2-.4-.3z"/></svg>';
+const F = (n) => `../../anuncios/dez/fotos/${n}.jpg`;
+
+// layout offsets: feed (1350) vs story (1920, keeps 250px safe areas)
+const L = (st) => st ? { top: 250, sub: 400, big: 450, foot: 250 } : { top: 40, sub: 190, big: 240, foot: 44 };
+const topbar = (o) => `<div class="abs top" style="top:${o.top}px"><span class="e">👁️</span><div><div class="t1">CONSULTA COM OFTALMOLOGISTA</div><div class="t2">${WD}, ${DATE} · IBOTIRAMA</div></div></div>`;
+const foot = (o) => `<div class="abs foot" style="bottom:${o.foot}px"><div class="wa">${WA}77 99915-7649</div><div class="logo"><img src="logo_consultorio.png"></div></div>`;
+
+// photo ad: person on the right, title on the left
+const photoAd = (st, img, pos, sub, lines, bodyTop, body, pill) => {
+  const o = L(st);
+  const bt = (st ? 250 : 0) + bodyTop;
+  return `<div class="a ${st ? 'st' : 'f'}"><img class="photo" src="${F(img)}" style="object-position:${pos}"><div class="shade"></div>
+    ${topbar(o)}<div class="abs sub" style="top:${o.sub}px">${sub}</div>
+    <div class="abs big" style="top:${o.big}px">${lines}</div>
+    <div class="abs body" style="top:${bt}px">${body}</div>
+    <div class="abs pill" style="top:${bt + 200}px">${pill}</div>${foot(o)}</div>`;
+};
+// designed calendar ad (the cheapest winner of November)
+const calAd = (st) => {
+  const o = L(st);
+  return `<div class="a ${st ? 'st' : 'f'}"><div class="curve"></div><div class="curve2"></div>${topbar(o)}
+    <div class="abs center" style="top:${o.sub}px;font-family:Anton;font-size:92px">MARQUE NA <span class="y">AGENDA</span></div>
+    <div class="abs cal" style="top:${o.sub + 140}px"><div class="m">DEZEMBRO</div><div class="n">${D}</div><div class="w">${WD}</div></div>
+    <div class="abs center" style="top:${o.sub + 790}px;font-size:40px;font-weight:800">Ao lado da <span class="y">Ótica Beira Rio</span></div>
+    <div class="abs pill" style="top:${o.sub + 870}px;left:50%;transform:translateX(-50%)">AGENDE PELO WHATSAPP 📲</div>${foot(o)}</div>`;
+};
+
+const AD = (st) => [
+  ['01_celular', photoAd(st, '02_celular_longe', '62% 30%', 'QUEM NUNCA? 😅', 'AFASTA O<br><span class="y">CELULAR</span><br>PRA LER?', 640,
+    'Pode ser <b>vista cansada</b>. Consulta com oftalmologista aqui em Ibotirama.', 'AGENDE PELO WHATSAPP 📲')],
+  ['02_calendario', calAd(st)],
+  ['03_senhora', photoAd(st, '01_senhora60', '62% 30%', 'EXAME DE VISTA COMPLETO', `${WD}<br><span class="y">${DATE}</span>`, 560,
+    'Consulta com <b>oftalmologista</b> ao lado da Ótica Beira Rio.', 'GARANTA SEU HORÁRIO 📲')],
+  ['04_papel', photoAd(st, '05_papel', '62% 30%', 'PASSOU DOS 40?', 'LETRA<br><span class="y">PEQUENA</span><br>EMBAÇADA?', 640,
+    'É hora de <b>examinar a vista</b>. Agende sua consulta com oftalmologista.', 'AGENDE PELO WHATSAPP 📲')],
+  ['05_consulta', photoAd(st, '04_consulta', '55% 40%', 'VAGAS LIMITADAS', 'AGENDA<br><span class="y">ABERTA</span>', 520,
+    'Consulta com <b>oftalmologista</b> aqui em Ibotirama, ao lado da Ótica Beira Rio.', 'CHAME NO WHATSAPP 📲')],
+  ['06_lendo', photoAd(st, '06_lendo_facil', '62% 35%', 'DEPOIS DA CONSULTA ✨', 'ENXERGUE<br><span class="y">TUDO</span><br>NÍTIDO', 640,
+    'Cuide da sua visão com <b>oftalmologista</b> aqui em Ibotirama.', 'AGENDE PELO WHATSAPP 📲')],
+  ['07_crianca', photoAd(st, '07_crianca', '62% 30%', 'PAIS, FIQUEM DE OLHO 👀', 'FÉRIAS<br><span class="y">CHEGARAM</span>', 520,
+    'Boa hora para levar as crianças ao <b>oftalmologista</b>.', 'AGENDE PELO WHATSAPP 📲')],
+  ['08_casal', photoAd(st, '08_casal', '60% 35%', 'FIM DE ANO 💙', 'FESTAS<br><span class="y">ENXERGANDO</span><br>BEM', 640,
+    'Consulta com <b>oftalmologista</b> antes do Natal, aqui em Ibotirama.', 'GARANTA SEU HORÁRIO 📲')],
+  ['09_dirigindo', photoAd(st, '09_dirigindo', '68% 45%', 'DIRIGE À NOITE?', 'O FAROL<br><span class="y">OFUSCA?</span>', 520,
+    'Dificuldade para enxergar à noite merece <b>atenção</b>. Faça seu exame.', 'AGENDE PELO WHATSAPP 📲')],
+];
+const st = q.get('fmt') === 'story';
+document.getElementById('root').innerHTML = AD(st).map(([k, h]) => h.replace('<div class="a ', `<div id="${k}" class="a `)).join('');
+</script>
+</body>
+</html>
