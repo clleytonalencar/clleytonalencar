@@ -142,8 +142,11 @@ A, F, C, G = (57, 60, 64), (53, 57, 60), (48, 52, 55), (55, 59, 62)
 roots = {"A": 45, "F": 41, "C": 48, "G": 43}
 chords = {"A": A, "F": F, "C": C, "G": G}
 
+# FLAT=1: steady groove only (no crash/riser/SFX) so loudness stays even.
+FLAT = os.environ.get("FLAT") == "1"
 # Hook hits at 0s: groove starts immediately (no slow intro).
-place(mix, crash(), 0.0, 0.9)
+if not FLAT:
+    place(mix, crash(), 0.0, 0.9)
 prog = PROG
 for bar, name in enumerate(prog):
     t0 = bar * 4 * BEAT
@@ -161,19 +164,20 @@ for bar, name in enumerate(prog):
     place(mix, hat(open_=True), t0 + 3.5 * BEAT, 0.6)
 
 # Riser into the end card, crash on the price.
-place(mix, riser(0.9), 6.05, 0.7)
-place(mix, crash(), 7.0, 0.8)
-# SFX synced to c4.html.
-for at in (2.4, 4.6, 6.75):
-    place(mix, whoosh(), at, 0.8)
-for at in (2.6, 2.85, 4.85, 5.1, 7.3, 7.6, 8.2):
-    place(mix, pop(), at, 0.7)
-for at in (8.6, 9.15):
-    place(mix, tick(), at, 1.2)
+if not FLAT:
+    place(mix, riser(0.9), 6.05, 0.7)
+    place(mix, crash(), 7.0, 0.8)
+    # SFX synced to c4.html.
+    for at in (2.4, 4.6, 6.75):
+        place(mix, whoosh(), at, 0.8)
+    for at in (2.6, 2.85, 4.85, 5.1, 7.3, 7.6, 8.2):
+        place(mix, pop(), at, 0.7)
+    for at in (8.6, 9.15):
+        place(mix, tick(), at, 1.2)
 
 # Master: fade out, soft clip, normalize.
 fade = np.ones(N)
-fl = int(0.6 * SR)
+fl = int((0.3 if FLAT else 0.6) * SR)
 fade[-fl:] = np.linspace(1, 0, fl)
 mix *= fade
 mix = np.tanh(mix * 0.9)

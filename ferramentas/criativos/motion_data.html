@@ -55,7 +55,7 @@
     <div class="cal"><div class="m">DEZEMBRO</div><div class="n" id="en"></div><div class="w" id="ew"></div></div>
     <div class="ec" style="top:1330px;font-size:40px;font-weight:800">Ibotirama · ao lado da <span style="color:var(--y)">Ótica Beira Rio</span></div>
     <div class="ec" style="top:1420px"><span class="pill" id="ep"></span></div>
-    <div class="ec" style="top:1560px"><img src="logo_transp.png" style="width:280px"></div>
+    <div class="ec" style="top:1560px"><img src="logo_consultorio.png" style="width:300px"></div>
   </div>
 </div>
 <script>
@@ -73,7 +73,7 @@ const $ = (id) => document.getElementById(id);
 $('ph').src = `../../anuncios/dez/fotos/${V[0]}.jpg`; $('ph').style.objectPosition = V[1];
 $('h1').firstChild.innerHTML = V[2]; $('h2').firstChild.textContent = V[3];
 $('card').innerHTML = `<div class="bar">👁️ CONSULTA COM OFTALMOLOGISTA</div><div class="main"><div class="date">${WD}, ${D}/12</div>
-  <div class="place">Ibotirama · ao lado da Ótica Beira Rio</div><div class="row"><div class="wa">${WA}77 99915-7649</div><div class="logo"><img src="logo_transp.png"></div></div></div>`;
+  <div class="place">Ibotirama · ao lado da Ótica Beira Rio</div><div class="row"><div class="wa">${WA}77 99915-7649</div><div class="logo"><img src="logo_consultorio.png"></div></div></div>`;
 $('en').textContent = D; $('ew').textContent = WD; $('ep').innerHTML = 'AGENDE: 77 99915-7649';
 
 const clamp = (x) => Math.max(0, Math.min(1, x));

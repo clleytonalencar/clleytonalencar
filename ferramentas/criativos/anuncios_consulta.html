@@ -37,7 +37,7 @@
   .wa { display: flex; align-items: center; gap: 12px; font-size: 34px; font-weight: 900; }
   .wa svg { width: 46px; height: 46px; }
   .logo { text-align: center; }
-  .logo img { width: 240px; display: block; }
+  .logo img { width: 200px; display: block; }
   .logo small { display: block; font-size: 14px; font-weight: 800; letter-spacing: 4px; margin-top: 2px; }
   .cal { left: 50%; transform: translateX(-50%); width: 560px; background: var(--w); color: var(--b2); border-radius: 36px; overflow: hidden; text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,.45); }
   .cal .m { background: var(--y); font-family: Anton; font-size: 64px; padding: 14px 0 18px; letter-spacing: 2px; }
@@ -59,7 +59,7 @@ const F = (n) => `../../anuncios/dez/fotos/${n}.jpg`;
 // layout offsets: feed (1350) vs story (1920, keeps 250px safe areas)
 const L = (st) => st ? { top: 250, sub: 400, big: 450, foot: 250 } : { top: 40, sub: 190, big: 240, foot: 44 };
 const topbar = (o) => `<div class="abs top" style="top:${o.top}px"><span class="e">👁️</span><div><div class="t1">CONSULTA COM OFTALMOLOGISTA</div><div class="t2">${WD}, ${DATE} · IBOTIRAMA</div></div></div>`;
-const foot = (o) => `<div class="abs foot" style="bottom:${o.foot}px"><div class="wa">${WA}77 99915-7649</div><div class="logo"><img src="logo_transp.png"><small>CUIDANDO DA SUA VISÃO!</small></div></div>`;
+const foot = (o) => `<div class="abs foot" style="bottom:${o.foot}px"><div class="wa">${WA}77 99915-7649</div><div class="logo"><img src="logo_consultorio.png"></div></div>`;
 
 // photo ad: person on the right, title on the left
 const photoAd = (st, img, pos, sub, lines, bodyTop, body, pill) => {
